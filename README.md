@@ -6,8 +6,6 @@
 
 Let AI agents pay for APIs, MCP tools, data, and digital services using USDC on Stellar.
 
-[Website](https://tael.xyz) • [Documentation](#) • [X](#)
-
 </div>
 
 ---
