@@ -5,14 +5,33 @@ packages:
   - "packages/*"
 
 allowBuilds:
+  blake-hash: false
+  bufferutil: false
   esbuild: true
+  protobufjs: false
+  secp256k1: false
   sharp: true
+  tiny-secp256k1: false
+  usb: false
+  utf-8-validate: false
 
 # Native pnpm allowlist of dependencies permitted to run install/build scripts.
 # Needed by CI (real pnpm) so esbuild (tsup/tsx/vitest) and sharp (Next) work.
 onlyBuiltDependencies:
   - esbuild
   - sharp
+
+# Optional native build scripts we intentionally skip (real pnpm / CI won't error).
+# Pulled in transitively by the Stellar Wallets Kit (Ledger USB, other-chain crypto,
+# ws perf addons) — none are needed for the browser wallet flows we use.
+ignoredBuiltDependencies:
+  - blake-hash
+  - bufferutil
+  - protobufjs
+  - secp256k1
+  - tiny-secp256k1
+  - usb
+  - utf-8-validate
 
 # A single source of truth for third-party dependency versions across the monorepo.
 # Reference from any package.json with "some-dep": "catalog:".
@@ -43,6 +62,10 @@ catalog:
 
   # --- Runtime: blockchain ---
   "@stellar/stellar-sdk": ^13.1.0
+
+  # --- Auth (Sign-In-With-Stellar) ---
+  jose: ^5.9.6
+  "@creit.tech/stellar-wallets-kit": ^1.2.0
 
   # --- Runtime: web ---
   next: ^15.2.2

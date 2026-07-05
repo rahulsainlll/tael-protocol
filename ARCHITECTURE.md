@@ -167,6 +167,15 @@ tael-protocol/
 - **Never:** Data fetching, business logic, or app-specific composition (those live in an app's
   `features/`).
 
+### `packages/auth`
+
+- **Why:** Sign-In-With-Stellar primitives — challenge generation + session tokens (JWT via `jose`).
+  The wallet is the identity; no passwords, no database.
+- **Belongs:** `createChallenge` / `verifyChallengeToken`, `createSessionToken` / `verifySessionToken`.
+- **Never:** the Stellar SDK. It is deliberately **`jose`-only and edge-safe** so `verifySessionToken`
+  can run in Next.js middleware. Wallet-**signature** verification lives in `@tael/stellar`
+  (`verifySignedMessage`); the dashboard's `/api/auth/verify` route composes the two on Node.
+
 ## Package boundaries & dependency graph
 
 Dependencies flow **one way**: apps → libraries → the shared kernel. There are no cycles, and
@@ -179,6 +188,7 @@ graph TD
   stellar["@tael/stellar<br/><i>blockchain</i>"]
   sdk["@tael/sdk<br/><i>developer SDK</i>"]
   ui["@tael/ui<br/><i>shared UI</i>"]
+  auth["@tael/auth<br/><i>SIWS (jose)</i>"]
   api["apps/api<br/><i>business logic</i>"]
   web["apps/web<br/><i>marketing</i>"]
   dashboard["apps/dashboard<br/><i>product UI</i>"]
@@ -189,7 +199,10 @@ graph TD
   api --> payments
   api --> stellar
   api --> types
+  auth --> types
   dashboard --> ui
+  dashboard --> auth
+  dashboard --> stellar
 ```
 
 `@tael/config` is a **dev-only** dependency of every workspace (tooling presets), so it's omitted from
@@ -236,9 +249,10 @@ domain logic in feature modules — adapted to the Next.js App Router.
   the wallet balance card, the nav config); pages under `app/(dashboard)/<section>` stay thin and
   compose them. App-shell pieces (sidebar, top bar) and generic blocks (`PageHeader`, `EmptyState`,
   `StatCard`) live in `components/`.
-- **Auth is a shell, not a package.** `middleware.ts` gates the app behind a session cookie that the
-  demo login sets. There is no `@tael/auth` yet — Better Auth + passkeys replace the stub later, and
-  the middleware boundary is already there for it.
+- **Auth is Sign-In-With-Stellar.** The login page connects a Stellar wallet (Stellar Wallets Kit) and
+  signs a server challenge; `app/api/auth/*` route handlers verify the signature (`@tael/stellar`) and
+  set an httpOnly session JWT (`@tael/auth`). `middleware.ts` verifies that JWT on the edge runtime —
+  using only `@tael/auth` (jose), never the Stellar SDK. The wallet is the identity; no database.
 - **Shared UI comes from `@tael/ui`.** The dashboard consumes the design system (compiled via Next's
   `transpilePackages`); tokens ship from `@tael/ui/globals.css` and the `@tael/config` Tailwind preset.
 
@@ -326,16 +340,14 @@ Apps (`@tael/api`, `web`) are `ignore`d — they deploy, they don't publish.
 Designed-for but intentionally **not** scaffolded (no empty packages). Each has a clear trigger for
 creation:
 
-| Future workspace                   | Type    | Create it when…                                               |
-| ---------------------------------- | ------- | ------------------------------------------------------------- |
-| `apps/dashboard`                   | app     | users need to manage wallets/capabilities in a UI             |
-| `apps/docs`                        | app     | public docs outgrow the marketing site                        |
-| `apps/explorer`, `apps/playground` | app     | the marketplace / a payment sandbox is built                  |
-| `packages/database`                | library | persistence is needed — Drizzle adapter behind the ports      |
-| `packages/auth`                    | library | the middleware auth shell graduates to Better Auth + passkeys |
-| `packages/mcp`, `packages/agent`   | library | the MCP wrapper / agent client ship (Phase 3)                 |
-| `packages/policy-engine`           | library | spending policies grow beyond the `policy` schema             |
-| `contracts/`                       | Rust    | settlement moves on-chain (Soroban) — behind `@tael/stellar`  |
+| Future workspace                   | Type    | Create it when…                                              |
+| ---------------------------------- | ------- | ------------------------------------------------------------ |
+| `apps/docs`                        | app     | public docs outgrow the marketing site                       |
+| `apps/explorer`, `apps/playground` | app     | the marketplace / a payment sandbox is built                 |
+| `packages/database`                | library | persistence is needed — Drizzle adapter behind the ports     |
+| `packages/mcp`, `packages/agent`   | library | the MCP wrapper / agent client ship (Phase 3)                |
+| `packages/policy-engine`           | library | spending policies grow beyond the `policy` schema            |
+| `contracts/`                       | Rust    | settlement moves on-chain (Soroban) — behind `@tael/stellar` |
 
 `contracts/` will be a Cargo workspace (Soroban `wallet`/`policy`/`treasury`/`settlement`); its
 settlement adapter slots in behind `StellarSettlement` so no caller changes. Cargo is already present

@@ -1,17 +1,18 @@
 import { cookies } from "next/headers";
-
-const SESSION_COOKIE = "tael_session";
-
-export interface Session {
-  user: { name: string; email: string };
-}
+import { verifySessionToken, type Session } from "@tael/auth";
+import { AUTH_SECRET, SESSION_COOKIE } from "./config";
 
 /**
- * Reads the stub session cookie set by the demo login page. Architecture only —
- * replace with @tael/auth (Better Auth + passkeys) when authentication ships.
+ * Read + verify the Sign-In-With-Stellar session from the httpOnly cookie.
+ * Returns the authenticated Stellar address, or null if unauthenticated.
  */
 export async function getSession(): Promise<Session | null> {
   const store = await cookies();
-  if (!store.has(SESSION_COOKIE)) return null;
-  return { user: { name: "Demo User", email: "demo@tael.dev" } };
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    return await verifySessionToken(token, AUTH_SECRET);
+  } catch {
+    return null;
+  }
 }
