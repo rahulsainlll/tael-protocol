@@ -15,6 +15,11 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "catalog:",
+    "@stellar/stellar-sdk": "catalog:",
+    "@tael/auth": "workspace:*",
+    "@tael/stellar": "workspace:*",
+    "@tael/types": "workspace:*",
     "@tael/ui": "workspace:*",
     "lucide-react": "catalog:",
     "next": "catalog:",
