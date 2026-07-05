@@ -379,30 +379,35 @@ Even if an agent becomes compromised, it cannot exceed its on-chain policy.
 
 # Roadmap
 
-## Phase 1
+> **Build status:** the monorepo foundation is in place — SDK, x402, Stellar settlement, the HTTP API,
+> the marketing site, and the product **dashboard + shared UI** are all scaffolded and passing
+> `lint · typecheck · test · build`. See [`claude/roadmap.md`](./claude/roadmap.md) for the detailed
+> engineering roadmap and current status.
 
-- SDK
-- x402 integration
-- Smart wallet
-- HTTP APIs
+## Phase 1 — Foundation ✅
 
----
-
-## Phase 2
-
-- MCP Wrapper
-- Marketplace
-- Dashboard
-- Revenue analytics
+- SDK ✅
+- x402 integration ✅
+- Wallet & settlement ✅ _(Stellar primitives; Soroban smart wallet later)_
+- HTTP API ✅
 
 ---
 
-## Phase 3
+## Phase 2 — Product surface ✅
 
-- Agent Directory
-- Discovery
-- MPP sessions
-- Mainnet
+- Dashboard ✅
+- Shared UI (`@tael/ui`) ✅
+- Marketplace _(UI scaffolded; live listings next)_
+- Revenue analytics _(UI scaffolded; live data next)_
+
+---
+
+## Phase 3 — Real flows & beyond
+
+- Database + auth (Drizzle, Better Auth + passkeys)
+- MCP wrapper & agent client
+- Agent directory, discovery, MPP sessions
+- Soroban contracts, mainnet
 
 ---
 
@@ -444,8 +449,12 @@ packages/
   ui/           # @tael/ui — shared React components (shadcn/ui)
 ```
 
-See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for the full design (folder rationale, boundaries,
-dependency graph, DDD conventions, CI/CD, release workflow).
+**Project docs**
+
+- **[`claude/`](./claude/)** — project goals, roadmap, product spec, and principles (the _what_ and
+  _why_).
+- **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — the full technical design: folder rationale, package
+  boundaries, dependency graph, DDD conventions, CI/CD, release workflow.
 
 ## Local development
 
