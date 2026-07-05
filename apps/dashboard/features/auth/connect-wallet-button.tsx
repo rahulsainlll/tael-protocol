@@ -13,23 +13,26 @@ export function ConnectWalletButton() {
   async function connect() {
     setError(null);
     setLoading(true);
+    // Track which step fails so the on-screen error is actionable.
+    let step = "opening wallet";
     try {
       const kit = await getWalletKit();
-
-      // Opens the wallet picker, sets the chosen wallet active, returns its address.
       const { address } = await kit.authModal();
 
+      step = "requesting challenge";
       const challengeRes = await fetch(
         `/api/auth/challenge?address=${encodeURIComponent(address)}`,
       );
-      if (!challengeRes.ok) throw new Error("Could not start sign-in");
+      if (!challengeRes.ok) throw new Error(`challenge request failed (${challengeRes.status})`);
       const { message, challengeToken } = (await challengeRes.json()) as {
         message: string;
         challengeToken: string;
       };
 
+      step = "signing message";
       const { signedMessage } = await kit.signMessage(message, { address });
 
+      step = "verifying signature";
       const verifyRes = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -37,15 +40,16 @@ export function ConnectWalletButton() {
       });
       if (!verifyRes.ok) {
         const data = (await verifyRes.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? "Sign-in failed");
+        throw new Error(data.error ?? `verify failed (${verifyRes.status})`);
       }
 
       router.push("/");
       router.refresh();
     } catch (err) {
-      // authModal rejects when the user simply closes the picker — don't shout about that.
-      const message = err instanceof Error ? err.message : "Sign-in failed";
-      setError(/clos|cancel|reject|dismiss/i.test(message) ? null : message);
+      const detail = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.error(`[tael auth] failed while ${step}:`, err);
+      setError(`Failed while ${step}: ${detail}`);
       setLoading(false);
     }
   }
