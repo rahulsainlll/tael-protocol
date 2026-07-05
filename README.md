@@ -133,12 +133,12 @@ Request
 Wrap existing APIs in one command.
 
 ```ts
-import { tael } from "@tael/sdk"
+import { tael } from "@tael/sdk";
 
 export default tael({
-    price: "0.02",
-    handler: myApi
-})
+  price: "0.02",
+  handler: myApi,
+});
 ```
 
 That's it.
@@ -379,30 +379,35 @@ Even if an agent becomes compromised, it cannot exceed its on-chain policy.
 
 # Roadmap
 
-## Phase 1
+> **Build status:** the monorepo foundation is in place — SDK, x402, Stellar settlement, the HTTP API,
+> the marketing site, and the product **dashboard + shared UI** are all scaffolded and passing
+> `lint · typecheck · test · build`. See [`claude/roadmap.md`](./claude/roadmap.md) for the detailed
+> engineering roadmap and current status.
 
-- SDK
-- x402 integration
-- Smart wallet
-- HTTP APIs
+## Phase 1 — Foundation ✅
 
----
-
-## Phase 2
-
-- MCP Wrapper
-- Marketplace
-- Dashboard
-- Revenue analytics
+- SDK ✅
+- x402 integration ✅
+- Wallet & settlement ✅ _(Stellar primitives; Soroban smart wallet later)_
+- HTTP API ✅
 
 ---
 
-## Phase 3
+## Phase 2 — Product surface ✅
 
-- Agent Directory
-- Discovery
-- MPP sessions
-- Mainnet
+- Dashboard ✅
+- Shared UI (`@tael/ui`) ✅
+- Marketplace _(UI scaffolded; live listings next)_
+- Revenue analytics _(UI scaffolded; live data next)_
+
+---
+
+## Phase 3 — Real flows & beyond
+
+- Database + auth (Drizzle, Better Auth + passkeys)
+- MCP wrapper & agent client
+- Agent directory, discovery, MPP sessions
+- Soroban contracts, mainnet
 
 ---
 
@@ -426,9 +431,52 @@ Tael makes it possible.
 
 ---
 
+# Repository
+
+Tael is a Turborepo + pnpm monorepo.
+
+```text
+apps/
+  api/          # Backend API — Hono + tRPC modular monolith (@tael/api)
+  web/          # Marketing site — Next.js 15
+  dashboard/    # Product dashboard — Next.js 15 (wallets, marketplace, agents…)
+packages/
+  config/       # Shared tsconfig / eslint / prettier / tailwind presets
+  types/        # Shared domain kernel — value objects, zod schemas, errors
+  payments/     # x402 / HTTP-402 payment protocol
+  stellar/      # USDC settlement primitives (Soroban-ready)
+  sdk/          # @tael/sdk — the tael({ price, handler }) wrapper
+  ui/           # @tael/ui — shared React components (shadcn/ui)
+```
+
+**Project docs**
+
+- **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — the full technical design: folder rationale, package
+  boundaries, dependency graph, DDD conventions, CI/CD, release workflow.
+- **[`CONTRIBUTING.md`](./CONTRIBUTING.md)** — local setup, workflow, and conventions.
+
+## Local development
+
+Requires Node ≥ 22 and pnpm ≥ 11 (`corepack enable`).
+
+```bash
+pnpm install
+cp .env.example .env
+pnpm dev                       # run everything in watch mode
+
+pnpm --filter @tael/api dev    # or just the API       → http://localhost:3001/health
+pnpm --filter web dev          # or just the site      → http://localhost:3000
+pnpm --filter dashboard dev    # or just the dashboard → http://localhost:3002
+```
+
+Quality gates (same as CI): `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+
+---
+
 # Contributing
 
-We welcome contributions from developers building the future of autonomous commerce.
+We welcome contributions from developers building the future of autonomous commerce. Start with
+**[CONTRIBUTING.md](./CONTRIBUTING.md)**.
 
 ---
 

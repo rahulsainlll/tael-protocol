@@ -1,0 +1,9 @@
+# Default owners for everything in the repo.
+# Replace with real teams as the org grows (e.g. @tael/platform, @tael/payments).
+*                     @rahulsainlll
+
+# Domain ownership examples (uncomment and assign as teams form):
+# /packages/payment/  @tael/payments
+# /packages/stellar/  @tael/blockchain
+# /apps/api/          @tael/platform
+# /apps/web/          @tael/frontend
