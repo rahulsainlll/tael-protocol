@@ -451,10 +451,9 @@ packages/
 
 **Project docs**
 
-- **[`claude/`](./claude/)** — project goals, roadmap, product spec, and principles (the _what_ and
-  _why_).
 - **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — the full technical design: folder rationale, package
   boundaries, dependency graph, DDD conventions, CI/CD, release workflow.
+- **[`CONTRIBUTING.md`](./CONTRIBUTING.md)** — local setup, workflow, and conventions.
 
 ## Local development
 

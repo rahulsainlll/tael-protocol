@@ -32,3 +32,6 @@ pnpm-debug.log*
 !.vscode/extensions.json
 !.vscode/settings.json
 *.swp
+
+# Local-only project docs — kept on disk, not pushed
+/claude/
