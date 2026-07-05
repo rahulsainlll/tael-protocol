@@ -5,6 +5,7 @@ packages:
   - "packages/*"
 
 allowBuilds:
+  "@reown/appkit": false
   blake-hash: false
   bufferutil: false
   esbuild: true
@@ -25,6 +26,7 @@ onlyBuiltDependencies:
 # Pulled in transitively by the Stellar Wallets Kit (Ledger USB, other-chain crypto,
 # ws perf addons) — none are needed for the browser wallet flows we use.
 ignoredBuiltDependencies:
+  - "@reown/appkit"
   - blake-hash
   - bufferutil
   - protobufjs
@@ -65,7 +67,7 @@ catalog:
 
   # --- Auth (Sign-In-With-Stellar) ---
   jose: ^5.9.6
-  "@creit.tech/stellar-wallets-kit": ^1.2.0
+  "@creit.tech/stellar-wallets-kit": ^2.5.0
 
   # --- Runtime: web ---
   next: ^15.2.2
