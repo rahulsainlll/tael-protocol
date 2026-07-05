@@ -1,0 +1,49 @@
+{
+  "name": "@tael/sdk",
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Wrap any HTTP handler with x402 payments in one call: tael({ price, handler }).",
+  "license": "MIT",
+  "keywords": [
+    "tael",
+    "x402",
+    "payments",
+    "ai-agents",
+    "stellar",
+    "usdc"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@tael/payments": "workspace:*",
+    "@tael/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@tael/config": "workspace:*",
+    "@types/node": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

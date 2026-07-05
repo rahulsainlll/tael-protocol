@@ -1,0 +1,33 @@
+{
+  "name": "@tael/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tael backend API — Hono + tRPC modular monolith.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@hono/node-server": "catalog:",
+    "@stellar/stellar-sdk": "catalog:",
+    "@tael/payments": "workspace:*",
+    "@tael/stellar": "workspace:*",
+    "@tael/types": "workspace:*",
+    "@trpc/server": "catalog:",
+    "hono": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tael/config": "workspace:*",
+    "@types/node": "catalog:",
+    "tsup": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

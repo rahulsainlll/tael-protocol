@@ -1,0 +1,68 @@
+# pnpm workspace definition.
+# Every workspace lives under apps/* (deployables) or packages/* (libraries).
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+
+# Native pnpm allowlist of dependencies permitted to run install/build scripts.
+# Needed by CI (real pnpm) so esbuild (tsup/tsx/vitest) and sharp (Next) work.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+
+# A single source of truth for third-party dependency versions across the monorepo.
+# Reference from any package.json with "some-dep": "catalog:".
+# This prevents version drift across 20+ engineers and multiple workspaces.
+catalog:
+  # --- Build & language tooling ---
+  typescript: ^5.8.2
+  tsup: ^8.4.0
+  tsx: ^4.19.3
+  turbo: ^2.4.4
+  vitest: ^3.0.9
+
+  # --- Lint & format ---
+  eslint: ^9.22.0
+  "@eslint/js": ^9.22.0
+  typescript-eslint: ^8.26.1
+  eslint-config-prettier: ^10.1.1
+  globals: ^16.0.0
+  prettier: ^3.5.3
+
+  # --- Runtime: shared kernel ---
+  zod: ^3.24.2
+
+  # --- Runtime: api ---
+  hono: ^4.7.4
+  "@hono/node-server": ^1.14.0
+  "@trpc/server": ^11.0.0
+
+  # --- Runtime: blockchain ---
+  "@stellar/stellar-sdk": ^13.1.0
+
+  # --- Runtime: web ---
+  next: ^15.2.2
+  react: ^19.0.0
+  react-dom: ^19.0.0
+  tailwindcss: ^3.4.17
+  postcss: ^8.5.3
+  autoprefixer: ^10.4.20
+
+  # --- UI (shadcn/ui: Radix + Tailwind + CVA) ---
+  class-variance-authority: ^0.7.1
+  clsx: ^2.1.1
+  tailwind-merge: ^2.6.0
+  tailwindcss-animate: ^1.0.7
+  lucide-react: ^0.469.0
+  next-themes: ^0.4.4
+  "@radix-ui/react-slot": ^1.1.1
+  "@radix-ui/react-dialog": ^1.1.4
+
+  # --- Types ---
+  "@types/node": ^22.13.10
+  "@types/react": ^19.0.10
+  "@types/react-dom": ^19.0.4
