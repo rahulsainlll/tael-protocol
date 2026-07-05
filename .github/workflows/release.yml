@@ -1,8 +1,11 @@
 name: Release
 
+# Manual-only for now. The @tael/* packages aren't published to npm yet (the
+# @tael scope isn't claimed), so auto-publishing on every push to main fails with
+# E404. Run this from the Actions tab once the npm scope + trusted publishing are
+# set up — or switch back to `push: { branches: [main] }` to re-enable auto-release.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
