@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Tael marketing website (Next.js 15).",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
