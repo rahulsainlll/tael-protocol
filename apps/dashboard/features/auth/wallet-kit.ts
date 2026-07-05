@@ -1,32 +1,27 @@
-import type { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
+type Kit = typeof import("@creit.tech/stellar-wallets-kit").StellarWalletsKit;
 
-let kit: StellarWalletsKit | null = null;
+let initialized = false;
 
 /**
- * Lazily create the Stellar Wallets Kit singleton. The kit is dynamically
- * imported (browser-only) so it never evaluates during SSR. Supports Freighter,
- * Albedo, xBull, and the other wallets the kit ships.
+ * Initialize the Stellar Wallets Kit (v2, static API) once and return the class.
+ * Dynamically imported so it never evaluates during SSR (it uses browser globals).
+ * `defaultModules()` (from the /modules/utils subpath) = the wallets that need no
+ * extra config (Freighter, Albedo, xBull, Rabet, Lobstr, Hana, HOT, …).
  */
-export async function getWalletKit(): Promise<StellarWalletsKit> {
-  if (kit) return kit;
+export async function getWalletKit(): Promise<Kit> {
+  const [{ StellarWalletsKit, Networks }, { defaultModules }] = await Promise.all([
+    import("@creit.tech/stellar-wallets-kit"),
+    import("@creit.tech/stellar-wallets-kit/modules/utils"),
+  ]);
 
-  const {
-    StellarWalletsKit: Kit,
-    WalletNetwork,
-    allowAllModules,
-    FREIGHTER_ID,
-  } = await import("@creit.tech/stellar-wallets-kit");
+  if (!initialized) {
+    StellarWalletsKit.init({
+      modules: defaultModules(),
+      network:
+        process.env.NEXT_PUBLIC_STELLAR_NETWORK === "mainnet" ? Networks.PUBLIC : Networks.TESTNET,
+    });
+    initialized = true;
+  }
 
-  const network =
-    process.env.NEXT_PUBLIC_STELLAR_NETWORK === "mainnet"
-      ? WalletNetwork.PUBLIC
-      : WalletNetwork.TESTNET;
-
-  kit = new Kit({
-    network,
-    selectedWalletId: FREIGHTER_ID,
-    modules: allowAllModules(),
-  });
-
-  return kit;
+  return StellarWalletsKit;
 }
