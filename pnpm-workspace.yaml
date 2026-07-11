@@ -53,6 +53,7 @@ catalog:
   eslint-config-prettier: ^10.1.1
   globals: ^16.0.0
   prettier: ^3.5.3
+  "@next/eslint-plugin-next": ^15.2.2
 
   # --- Runtime: shared kernel ---
   zod: ^3.24.2
