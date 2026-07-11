@@ -31,7 +31,7 @@ export default function ComingSoonPage() {
 
       <div className="flex items-center gap-3">
         <a
-          href="/#waitlist"
+          href="/"
           className="rounded-full bg-white px-6 py-3 text-[14px] font-medium text-black transition-opacity hover:opacity-90"
         >
           Join the waitlist

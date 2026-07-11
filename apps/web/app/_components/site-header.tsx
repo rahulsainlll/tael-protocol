@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { WaitlistTrigger } from "./waitlist-trigger";
 
-const NAV_LINKS = ["Products", "Community"];
+const NAV_LINKS = ["Products", "Community", "Docs"];
 
 // Real destinations for nav links that have one; others fall back to "#".
-const NAV_HREFS: Record<string, string> = {};
+const NAV_HREFS: Record<string, string> = {
+  Community: "https://discord.gg/tcb6b7ZYha",
+  Docs: "/docs",
+};
 
 // Flip to the light theme once the hero gradient behind the nav goes light
 // (roughly when the headline/input have scrolled up toward the nav).
@@ -61,16 +64,20 @@ export function SiteHeader() {
 
         {/* Primary nav */}
         <nav className="hidden items-center gap-3 md:flex">
-          {NAV_LINKS.map((label, i) => (
-            <a
-              key={i}
-              href={NAV_HREFS[label] ?? "#"}
-              {...(NAV_HREFS[label] ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              className={`${linkBase} ${i === 0 ? activeLink : idleLink}`}
-            >
-              {label}
-            </a>
-          ))}
+          {NAV_LINKS.map((label, i) => {
+            const href = NAV_HREFS[label] ?? "#";
+            const external = href.startsWith("http");
+            return (
+              <a
+                key={i}
+                href={href}
+                {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                className={`${linkBase} ${i === 0 ? activeLink : idleLink}`}
+              >
+                {label}
+              </a>
+            );
+          })}
         </nav>
 
         {/* CTA */}
