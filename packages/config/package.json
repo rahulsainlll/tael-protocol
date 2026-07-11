@@ -22,6 +22,7 @@
   ],
   "dependencies": {
     "@eslint/js": "catalog:",
+    "@next/eslint-plugin-next": "catalog:",
     "eslint-config-prettier": "catalog:",
     "globals": "catalog:",
     "tailwindcss-animate": "catalog:",

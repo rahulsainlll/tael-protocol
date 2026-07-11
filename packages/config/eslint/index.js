@@ -3,6 +3,7 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import prettier from "eslint-config-prettier";
+import nextPlugin from "@next/eslint-plugin-next";
 import globals from "globals";
 
 export default tseslint.config(
@@ -43,6 +44,18 @@ export default tseslint.config(
         "warn",
         { prefer: "type-imports", fixStyle: "inline-type-imports" },
       ],
+    },
+  },
+  {
+    // Next.js apps: register the Next plugin so its rules — and any
+    // `eslint-disable @next/next/...` directives in app code — resolve.
+    files: ["apps/web/**/*.{ts,tsx}", "apps/dashboard/**/*.{ts,tsx}"],
+    plugins: { "@next/next": nextPlugin },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      // App Router only — no `pages/` dir, so this rule is irrelevant + noisy.
+      "@next/next/no-html-link-for-pages": "off",
     },
   },
   // Must be last: turns off any rules that conflict with Prettier formatting.
