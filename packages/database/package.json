@@ -1,0 +1,39 @@
+{
+  "name": "@tael/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tael persistence layer: Drizzle schema, client, and migrations (PostgreSQL).",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./schema": {
+      "types": "./src/schema/index.ts",
+      "default": "./src/schema/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "clean": "rm -rf .turbo"
+  },
+  "dependencies": {
+    "@tael/types": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "postgres": "catalog:"
+  },
+  "devDependencies": {
+    "@tael/config": "workspace:*",
+    "@types/node": "catalog:",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  }
+}

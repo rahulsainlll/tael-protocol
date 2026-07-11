@@ -58,6 +58,11 @@ catalog:
   # --- Runtime: shared kernel ---
   zod: ^3.24.2
 
+  # --- Database (Drizzle ORM + Postgres) ---
+  drizzle-orm: ^0.45.2
+  drizzle-kit: ^0.31.10
+  postgres: ^3.4.9
+
   # --- Runtime: api ---
   hono: ^4.7.4
   "@hono/node-server": ^1.14.0
