@@ -12,11 +12,27 @@ const HERO_GRADIENT =
 
 // Orbiting provider icons, positioned on the arc (coords relative to the 1440px stage).
 const ORBIT = [
-  { src: "/logos/orbit-anthropic.svg", w: 35, h: 24, size: 60, left: 242, top: 382, alt: "Anthropic" },
+  {
+    src: "/logos/orbit-anthropic.svg",
+    w: 35,
+    h: 24,
+    size: 60,
+    left: 242,
+    top: 382,
+    alt: "Anthropic",
+  },
   { src: "/logos/orbit-openai.svg", w: 33, h: 32, size: 62, left: 365, top: 240, alt: "OpenAI" },
   { src: "/logos/orbit-claude.svg", w: 36, h: 36, size: 64, left: 686, top: 124, alt: "Claude" },
   { src: "/logos/orbit-grok.svg", w: 36, h: 36, size: 64, left: 863, top: 156, alt: "Grok" },
-  { src: "/logos/orbit-perplexity.png", w: 50, h: 50, size: 62, left: 1017, top: 240, alt: "Perplexity" },
+  {
+    src: "/logos/orbit-perplexity.png",
+    w: 50,
+    h: 50,
+    size: 62,
+    left: 1017,
+    top: 240,
+    alt: "Perplexity",
+  },
   { src: "/logos/orbit-lovable.svg", w: 27, h: 28, size: 60, left: 1138, top: 382, alt: "Lovable" },
 ];
 
@@ -44,12 +60,22 @@ export default function HomePage() {
           />
 
           {/* vertical guide rails (start below the nav) */}
-          <div className="pointer-events-none absolute h-full w-px bg-white/[0.09]" style={{ left: 80, top: 48 }} />
-          <div className="pointer-events-none absolute h-full w-px bg-white/[0.09]" style={{ left: 1360, top: 48 }} />
+          <div
+            className="pointer-events-none absolute h-full w-px bg-white/[0.09]"
+            style={{ left: 80, top: 48 }}
+          />
+          <div
+            className="pointer-events-none absolute h-full w-px bg-white/[0.09]"
+            style={{ left: 1360, top: 48 }}
+          />
 
           {/* orbit icons */}
           {ORBIT.map((o) => (
-            <div key={o.alt} className={iconCircle} style={{ left: o.left, top: o.top, width: o.size, height: o.size }}>
+            <div
+              key={o.alt}
+              className={iconCircle}
+              style={{ left: o.left, top: o.top, width: o.size, height: o.size }}
+            >
               <img src={o.src} alt={o.alt} style={{ width: o.w, height: o.h }} />
             </div>
           ))}

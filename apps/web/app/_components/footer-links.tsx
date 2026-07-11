@@ -48,7 +48,10 @@ export function FooterLinks() {
             <span className={`${item} text-[#989898]`}>{col.title}</span>
             {col.links.map((label) =>
               label === "Try now" ? (
-                <WaitlistTrigger key={label} className={`${item} text-left text-black hover:bg-[#ECECED]`}>
+                <WaitlistTrigger
+                  key={label}
+                  className={`${item} text-left text-black hover:bg-[#ECECED]`}
+                >
                   {label}
                 </WaitlistTrigger>
               ) : (
