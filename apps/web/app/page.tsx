@@ -94,8 +94,8 @@ export default function HomePage() {
               <br />
               For AI agents.
             </h1>
-            <p className="text-[18px] font-normal leading-[26px] tracking-[-0.035em] text-white">
-              Connect every app you use - 100 apps and 3000 actions, all in one platform.
+            <p className="max-w-[430px] text-[18px] font-normal leading-[26px] tracking-[-0.035em] text-white">
+              Pay for every API you use. 100 apps and 3000 actions, all in one platform.
             </p>
           </div>
 
