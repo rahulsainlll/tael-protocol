@@ -45,20 +45,38 @@ const CARDS = [
   },
 ];
 
+const pill =
+  "rounded-[10px] bg-[#ECECED] px-4 py-2.5 text-[14px] font-medium tracking-[-0.02em] text-black";
+
 export function ProviderCards() {
   return (
-    <div className="grid w-full grid-cols-1 gap-7 sm:grid-cols-2 lg:w-[728px]">
-      {CARDS.map((card) => (
-        <div
-          key={card.alt}
-          className="flex h-[124px] flex-col gap-5 rounded-[11px] border border-[#E9E9E9] bg-white p-5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)]"
+    <div className="flex w-full flex-col gap-7 lg:w-[728px]">
+      <div className="grid grid-cols-1 gap-7 sm:grid-cols-2">
+        {CARDS.map((card) => (
+          <div
+            key={card.alt}
+            className="flex h-[124px] flex-col gap-5 rounded-[11px] border border-[#E9E9E9] bg-white p-5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)]"
+          >
+            <img src={card.logo} alt={card.alt} style={{ width: card.w, height: card.h }} />
+            <p className="text-[13px] font-normal leading-5 tracking-[-0.03em] text-ink-muted">
+              {card.desc}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA pills */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={pill}>10+ agents available</span>
+        <a
+          href="https://discord.gg/tcb6b7ZYha"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${pill} transition-colors hover:bg-[#e2e2e4]`}
         >
-          <img src={card.logo} alt={card.alt} style={{ width: card.w, height: card.h }} />
-          <p className="text-[13px] font-normal leading-5 tracking-[-0.03em] text-ink-muted">
-            {card.desc}
-          </p>
-        </div>
-      ))}
+          Join community to try now
+        </a>
+      </div>
     </div>
   );
 }

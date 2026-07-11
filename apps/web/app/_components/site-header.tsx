@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import { WaitlistTrigger } from "./waitlist-trigger";
 
-const NAV_LINKS = ["Products", "Developer", "Community"];
+const NAV_LINKS = ["Products", "Community"];
 
 // Real destinations for nav links that have one; others fall back to "#".
-const NAV_HREFS: Record<string, string> = {
-  Developer: "https://discord.gg/tcb6b7ZYha",
-};
+const NAV_HREFS: Record<string, string> = {};
 
 // Flip to the light theme once the hero gradient behind the nav goes light
 // (roughly when the headline/input have scrolled up toward the nav).
