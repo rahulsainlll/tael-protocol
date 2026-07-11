@@ -17,7 +17,8 @@
   "dependencies": {
     "next": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "resend": "^6.17.2"
   },
   "devDependencies": {
     "@tael/config": "workspace:*",
