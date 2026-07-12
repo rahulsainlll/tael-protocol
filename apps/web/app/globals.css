@@ -6,3 +6,29 @@ body {
   color: #27272a;
   background-color: #ffffff;
 }
+
+/* Syntax highlighting (sugar-high) — light palette, Vercel-style colors. */
+:root {
+  --sh-class: #1f6feb;
+  --sh-identifier: #354150;
+  --sh-sign: #8996a3;
+  --sh-property: #0550ae;
+  --sh-entity: #6f42c1;
+  --sh-jsxliterals: #6266d1;
+  --sh-string: #007f7a;
+  --sh-keyword: #d1349b;
+  --sh-comment: #a2a9b4;
+}
+
+/* Dark palette — vivid tokens on a near-black block. */
+.dark {
+  --sh-class: #e5c07b;
+  --sh-identifier: #d6deeb;
+  --sh-sign: #7d8799;
+  --sh-property: #79c0ff;
+  --sh-entity: #61afef;
+  --sh-jsxliterals: #79c0ff;
+  --sh-string: #7ee787;
+  --sh-keyword: #ff7b9c;
+  --sh-comment: #7d8590;
+}

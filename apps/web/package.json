@@ -19,7 +19,8 @@
     "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "resend": "^6.17.2"
+    "resend": "^6.17.2",
+    "sugar-high": "^1.2.1"
   },
   "devDependencies": {
     "@tael/config": "workspace:*",
