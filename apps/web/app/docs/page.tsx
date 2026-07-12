@@ -4,18 +4,54 @@ const TOC = [
 ];
 
 const QUICKSTART = [
-  { title: "Node.js", desc: "Wrap an API and get paid in USDC." },
-  { title: "Next.js", desc: "Add pay-per-call routes to your app." },
-  { title: "Python", desc: "Meter and monetize your endpoints." },
-  { title: "MCP", desc: "Charge agents for MCP tool calls." },
-  { title: "cURL", desc: "Call the HTTP API directly." },
-  { title: "x402", desc: "Accept x402 payment proofs." },
+  {
+    title: "Quickstart",
+    desc: "Install the SDK and gate a handler in minutes.",
+    href: "/docs/quickstart",
+  },
+  {
+    title: "Wrap an API",
+    desc: "Put any HTTP handler behind a per-call price.",
+    href: "/docs/wrap-an-api",
+  },
+  {
+    title: "Authentication",
+    desc: "How agents authenticate by paying — no keys.",
+    href: "/docs/authentication",
+  },
+  {
+    title: "Accept payments",
+    desc: "The 402 → pay → receipt flow, end to end.",
+    href: "/docs/accept-payments",
+  },
+  {
+    title: "Node.js SDK",
+    desc: "createTael, tael, and the option reference.",
+    href: "/docs/sdk/node",
+  },
+  {
+    title: "cURL",
+    desc: "Drive the x402 flow with raw HTTP.",
+    href: "/docs/sdk/curl",
+  },
 ];
 
 const EXPLORE = [
-  { title: "Accept payments", desc: "Take USDC on Stellar from any agent, non-custodially." },
-  { title: "Agent wallets", desc: "Provision and manage wallets your agents pay from." },
-  { title: "Webhooks", desc: "React to payments and settlement events in real time." },
+  {
+    title: "Accept payments",
+    desc: "Take USDC on Stellar from any agent, non-custodially.",
+    href: "/docs/accept-payments",
+  },
+  {
+    title: "Wrap an API",
+    desc: "Monetize an existing endpoint with a single SDK call.",
+    href: "/docs/wrap-an-api",
+  },
+  {
+    title: "Authentication",
+    desc: "Payments are the auth — no accounts or API keys.",
+    href: "/docs/authentication",
+  },
 ];
 
 export default function DocsIntroPage() {
@@ -53,7 +89,8 @@ export default function DocsIntroPage() {
           </svg>
           <p className="text-[14px] leading-6 tracking-[-0.01em] text-ink-soft dark:text-white/65">
             Wrap any API, MCP tool, or data service with one SDK call and get paid in USDC on
-            Stellar every time an agent uses it. Non-custodial, no accounts required.
+            Stellar every time an agent uses it. Payments ride on the open x402 / HTTP-402 protocol
+            — non-custodial, no accounts or API keys required.
           </p>
         </div>
 
@@ -71,14 +108,14 @@ export default function DocsIntroPage() {
           {QUICKSTART.map((card) => (
             <a
               key={card.title}
-              href="#"
+              href={card.href}
               className="group rounded-xl border border-line bg-white p-5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-colors hover:border-ink-muted/40 dark:border-white/10 dark:bg-white/[0.02] dark:shadow-none dark:hover:border-white/25"
             >
               <div className="mb-8 flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-[13px] font-semibold text-ink dark:bg-white/[0.08] dark:text-white">
                 {card.title.slice(0, 2)}
               </div>
               <p className="text-[15px] font-semibold tracking-[-0.01em] text-ink dark:text-white">
-                {card.title} Quickstart
+                {card.title}
               </p>
               <p className="mt-1 text-[13px] leading-5 tracking-[-0.01em] text-ink-muted dark:text-white/45">
                 {card.desc}
@@ -101,7 +138,7 @@ export default function DocsIntroPage() {
           {EXPLORE.map((row) => (
             <a
               key={row.title}
-              href="#"
+              href={row.href}
               className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-surface/50 dark:hover:bg-white/[0.04]"
             >
               <div>

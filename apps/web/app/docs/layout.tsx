@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { DocsSidebar } from "./_components/docs-sidebar";
+import { GithubStar } from "./_components/github-star";
 import { ThemeToggle } from "./_components/theme-toggle";
 
 export const metadata: Metadata = {
@@ -44,6 +45,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            <GithubStar />
             <ThemeToggle />
             <a
               href="/"
