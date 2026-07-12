@@ -63,6 +63,9 @@ catalog:
   drizzle-kit: ^0.31.10
   postgres: ^3.4.9
 
+  # --- AI (Anthropic / Claude) ---
+  "@anthropic-ai/sdk": ^0.111.0
+
   # --- Runtime: api ---
   hono: ^4.7.4
   "@hono/node-server": ^1.14.0
