@@ -28,15 +28,22 @@ export default function BlogIndex() {
               <span aria-hidden>·</span>
               <span>{post.readingTime}</span>
             </div>
-            <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.02em] text-white transition-colors group-hover:text-accent sm:text-[28px]">
+            <h2 className="mt-2 text-[24px] font-semibold tracking-[-0.02em] text-white/90 transition-colors group-hover:text-white sm:text-[28px]">
               {post.title}
             </h2>
             <p className="mt-2 max-w-[58ch] text-[16px] leading-[1.6] text-white/55">
               {post.description}
             </p>
-            <span className="mt-3 inline-flex items-center gap-1.5 text-[14px] font-medium text-accent">
+            <span className="mt-3 inline-flex items-center gap-1.5 text-[14px] font-medium text-white/55 transition-colors group-hover:text-white">
               Read
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden
+                className="transition-transform duration-150 group-hover:translate-x-0.5"
+              >
                 <path
                   d="M5 12h14M13 6l6 6-6 6"
                   stroke="currentColor"
