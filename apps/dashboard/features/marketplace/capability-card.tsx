@@ -1,33 +1,49 @@
-import { Star } from "lucide-react";
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@tael/ui";
-import type { SampleCapability } from "./sample-data";
+import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, cn } from "@tael/ui";
+import { formatPrice, kindMeta } from "../capabilities/kind-meta";
+import type { MarketplaceItem } from "./types";
 
-export function CapabilityCard({ capability }: { capability: SampleCapability }) {
+export function CapabilityCard({ capability }: { capability: MarketplaceItem }) {
+  const meta = kindMeta(capability.kind);
+  const Icon = meta.icon;
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">{capability.name}</CardTitle>
-          <Badge variant="secondary">{capability.category}</Badge>
-        </div>
-        <p className="line-clamp-2 text-sm text-muted-foreground">{capability.description}</p>
-      </CardHeader>
-      <CardContent className="mt-auto space-y-3">
-        <div className="flex items-center gap-1 text-sm">
-          <Star className="h-3.5 w-3.5 fill-current text-yellow-500" />
-          <span className="font-medium">{capability.rating.toFixed(1)}</span>
-          <span className="text-muted-foreground">
-            · {capability.successRate}% success · {capability.latencyMs}ms
-          </span>
-        </div>
-        <div className="flex items-center justify-between border-t pt-3">
-          <span className="text-xs text-muted-foreground">by {capability.creator}</span>
-          <span className="text-sm font-semibold">
-            ${capability.price}
-            <span className="text-xs font-normal text-muted-foreground">/call</span>
-          </span>
-        </div>
-      </CardContent>
-    </Card>
+    <Link href={`/marketplace/${capability.slug}`} className="group block">
+      <Card className="flex h-full flex-col transition-colors group-hover:border-foreground/20">
+        <CardHeader className="gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg", meta.tile)}>
+              <Icon className="h-4 w-4" />
+            </span>
+            <span
+              className={cn(
+                "rounded-md border px-1.5 py-0.5 text-[10px] font-semibold",
+                meta.badge,
+              )}
+            >
+              {meta.label}
+            </span>
+          </div>
+          <CardTitle className="flex items-center gap-1.5 text-base">
+            {capability.name}
+            {capability.status === "verified" ? (
+              <BadgeCheck className="h-4 w-4 text-emerald-600" />
+            ) : null}
+          </CardTitle>
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {capability.description || "No description."}
+          </p>
+        </CardHeader>
+        <CardContent className="mt-auto">
+          <div className="flex items-center justify-between border-t pt-3">
+            <span className="font-mono text-xs text-muted-foreground">/{capability.slug}</span>
+            <span className="text-sm font-semibold">
+              ${formatPrice(capability.price)}
+              <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

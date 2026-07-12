@@ -1,28 +1,39 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, Store } from "lucide-react";
 import { cn, Input } from "@tael/ui";
+import { EmptyState } from "../../components/empty-state";
 import { CapabilityCard } from "./capability-card";
-import { categories, sampleCapabilities, type CapabilityCategory } from "./sample-data";
+import { capabilityKinds, type MarketplaceItem } from "./types";
 
-type Filter = CapabilityCategory | "All";
+type Filter = MarketplaceItem["kind"] | "all";
 
-export function MarketplaceGrid() {
-  const [active, setActive] = useState<Filter>("All");
+export function MarketplaceGrid({ items }: { items: MarketplaceItem[] }) {
+  const [active, setActive] = useState<Filter>("all");
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(
     () =>
-      sampleCapabilities.filter((capability) => {
-        const matchesCategory = active === "All" || capability.category === active;
-        const matchesQuery = capability.name.toLowerCase().includes(query.toLowerCase());
-        return matchesCategory && matchesQuery;
+      items.filter((item) => {
+        const matchesKind = active === "all" || item.kind === active;
+        const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase());
+        return matchesKind && matchesQuery;
       }),
-    [active, query],
+    [items, active, query],
   );
 
-  const filters: Filter[] = ["All", ...categories];
+  const filters: Filter[] = ["all", ...capabilityKinds];
+
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={Store}
+        title="No capabilities yet"
+        description="The marketplace is empty. Publish the first capability from “My Capabilities”."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -43,7 +54,7 @@ export function MarketplaceGrid() {
             type="button"
             onClick={() => setActive(filter)}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              "rounded-full border px-3 py-1 text-xs font-medium uppercase transition-colors",
               active === filter
                 ? "border-transparent bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -55,8 +66,8 @@ export function MarketplaceGrid() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {filtered.map((capability) => (
-          <CapabilityCard key={capability.id} capability={capability} />
+        {filtered.map((item) => (
+          <CapabilityCard key={item.id} capability={item} />
         ))}
       </div>
     </div>

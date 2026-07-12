@@ -5,3 +5,6 @@ build
 .turbo
 coverage
 pnpm-lock.yaml
+
+# Drizzle-generated migrations + metadata (owned by drizzle-kit)
+packages/database/drizzle
