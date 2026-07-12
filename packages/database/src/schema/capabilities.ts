@@ -1,6 +1,41 @@
-import { index, numeric, pgTable, text, uuid } from "drizzle-orm/pg-core";
-import { capabilityKind, capabilityVisibility, primaryId, timestamps } from "./_shared";
+import { index, jsonb, numeric, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import {
+  capabilityKind,
+  capabilityStatus,
+  capabilityVisibility,
+  primaryId,
+  timestamps,
+} from "./_shared";
 import { users } from "./users";
+
+/** A publisher-answered FAQ entry shown publicly on the listing. */
+export interface CapabilityFaq {
+  question: string;
+  answer: string;
+}
+
+/**
+ * One callable operation of a capability (e.g. an API endpoint / MCP tool),
+ * with its own sample request/response and its own price per call. A capability
+ * can expose several.
+ */
+export interface CapabilityOperation {
+  /** Human label, e.g. "Extract text" or "GET /prices". */
+  name: string;
+  /** HTTP method for API/model kinds, e.g. "GET" | "POST". */
+  method?: string;
+  /** Example request payload (JSON string), shown publicly. */
+  sampleRequest?: string;
+  /** Example response payload (JSON string), shown publicly. */
+  sampleResponse?: string;
+  /** Price per call for THIS operation, USDC decimal string. */
+  price: string;
+}
+
+/** Kind-aware contract for a capability — the list of callable operations. */
+export interface CapabilitySpec {
+  operations?: CapabilityOperation[];
+}
 
 /**
  * A published capability: a developer wraps an upstream service (API/MCP/agent)
@@ -21,6 +56,12 @@ export const capabilities = pgTable(
     description: text("description").notNull().default(""),
     kind: capabilityKind("kind").notNull(),
     visibility: capabilityVisibility("visibility").notNull().default("public"),
+    status: capabilityStatus("status").notNull().default("draft"),
+
+    /** AI-generated questions the publisher answered at publish time (public). */
+    faqs: jsonb("faqs").$type<CapabilityFaq[]>().notNull().default([]),
+    /** Kind-aware contract: method + sample request/response (public). */
+    spec: jsonb("spec").$type<CapabilitySpec>().notNull().default({}),
 
     /** Price per successful call, USDC decimal string. */
     price: numeric("price", { precision: 20, scale: 7 }).notNull(),

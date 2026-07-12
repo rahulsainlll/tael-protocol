@@ -36,5 +36,12 @@ export const capabilityVisibility = pgEnum("capability_visibility", [
   "private",
 ]);
 
+/**
+ * Verification lifecycle of a capability. `draft` = created but not through the
+ * publish/verify wizard; `verified` = the publisher answered the AI-generated
+ * FAQ and it's listed with a trust badge.
+ */
+export const capabilityStatus = pgEnum("capability_status", ["draft", "verified"]);
+
 /** Lifecycle of a payment / settlement. Mirrors @tael/types paymentStatus. */
 export const paymentStatus = pgEnum("payment_status", ["pending", "settled", "failed", "refunded"]);

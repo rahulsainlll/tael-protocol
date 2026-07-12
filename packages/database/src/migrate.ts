@@ -16,17 +16,17 @@ async function main() {
   const client = postgres(url, { max: 1 });
   const db = drizzle(client);
 
-  // eslint-disable-next-line no-console
+   
   console.log("Running migrations…");
   await migrate(db, { migrationsFolder: "./drizzle" });
-  // eslint-disable-next-line no-console
+   
   console.log("Migrations complete.");
 
   await client.end();
 }
 
 main().catch((error) => {
-  // eslint-disable-next-line no-console
+   
   console.error("Migration failed:", error);
   process.exit(1);
 });
