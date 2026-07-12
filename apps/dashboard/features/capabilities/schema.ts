@@ -28,9 +28,7 @@ export type DescribeCapabilityInput = z.infer<typeof describeCapabilitySchema>;
 
 /** Step 2 (final): the above plus the publisher's answered FAQ. */
 export const publishCapabilitySchema = describeCapabilitySchema.extend({
-  faqs: z
-    .array(z.object({ question: z.string(), answer: z.string().default("") }))
-    .default([]),
+  faqs: z.array(z.object({ question: z.string(), answer: z.string().default("") })).default([]),
 });
 
 export type PublishCapabilityInput = z.infer<typeof publishCapabilitySchema>;

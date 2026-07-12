@@ -188,7 +188,13 @@ async function testUpstream(args: {
   secret: string;
 }): Promise<TestResult> {
   if (isBlockedUrl(args.url)) {
-    return { name: args.name, ok: false, status: null, response: "", error: "Endpoint not allowed" };
+    return {
+      name: args.name,
+      ok: false,
+      status: null,
+      response: "",
+      error: "Endpoint not allowed",
+    };
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);

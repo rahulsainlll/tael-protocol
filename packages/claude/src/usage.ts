@@ -22,7 +22,7 @@ export interface AiUsage {
  */
 export function recordAiUsage(usage: AiUsage): void {
   // TODO(billing): debit `usage.userAddress`'s balance for the AI cost.
-   
+
   console.info(
     `[ai usage] ${usage.action} model=${usage.model} in=${usage.inputTokens} out=${usage.outputTokens} user=${usage.userAddress}`,
   );
