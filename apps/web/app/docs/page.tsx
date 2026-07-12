@@ -44,11 +44,16 @@ export default function DocsIntroPage() {
             aria-hidden
           >
             <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-            <path d="M12 11v5M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path
+              d="M12 11v5M12 8h.01"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
           <p className="text-[14px] leading-6 tracking-[-0.01em] text-ink-soft dark:text-white/65">
-            Wrap any API, MCP tool, or data service with one SDK call and get paid in USDC on Stellar
-            every time an agent uses it. Non-custodial, no accounts required.
+            Wrap any API, MCP tool, or data service with one SDK call and get paid in USDC on
+            Stellar every time an agent uses it. Non-custodial, no accounts required.
           </p>
         </div>
 
