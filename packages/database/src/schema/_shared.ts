@@ -1,0 +1,47 @@
+import { sql } from "drizzle-orm";
+import { pgEnum, timestamp, uuid } from "drizzle-orm/pg-core";
+
+/**
+ * Shared column builders and enums so every table is consistent:
+ * UUID primary keys, timestamptz audit columns, and native Postgres enums.
+ */
+
+/** UUID primary key, generated in the database. */
+export const primaryId = () => uuid("id").primaryKey().defaultRandom();
+
+/** `created_at` / `updated_at`, always timezone-aware. Spread into each table. */
+export const timestamps = {
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => sql`now()`),
+};
+
+// --- Native enums (created as real Postgres types, not text) ---
+
+/** Kinds of purchasable capability. Mirrors @tael/types capabilityKind. */
+export const capabilityKind = pgEnum("capability_kind", [
+  "api",
+  "mcp",
+  "agent",
+  "model",
+  "dataset",
+]);
+
+/** Visibility of a published capability in the marketplace. */
+export const capabilityVisibility = pgEnum("capability_visibility", [
+  "public",
+  "unlisted",
+  "private",
+]);
+
+/**
+ * Verification lifecycle of a capability. `draft` = created but not through the
+ * publish/verify wizard; `verified` = the publisher answered the AI-generated
+ * FAQ and it's listed with a trust badge.
+ */
+export const capabilityStatus = pgEnum("capability_status", ["draft", "verified"]);
+
+/** Lifecycle of a payment / settlement. Mirrors @tael/types paymentStatus. */
+export const paymentStatus = pgEnum("payment_status", ["pending", "settled", "failed", "refunded"]);

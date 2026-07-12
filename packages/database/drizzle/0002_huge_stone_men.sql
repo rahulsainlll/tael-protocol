@@ -1,0 +1,1 @@
+ALTER TABLE "capabilities" ADD COLUMN "spec" jsonb DEFAULT '{}'::jsonb NOT NULL;
