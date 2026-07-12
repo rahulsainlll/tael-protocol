@@ -63,12 +63,15 @@ export function Ul({ children }: { children: ReactNode }) {
   );
 }
 
-/** A pulled-out line for emphasis — big, white, breathing room around it. */
+/** A pulled-out line for emphasis: centered, framed by hairline rules, with a
+ *  muted lead and a white payoff (wrap the lead in a text-white/50 span). */
 export function Pullquote({ children }: { children: ReactNode }) {
   return (
-    <p className="my-12 text-[24px] font-medium leading-[1.4] tracking-[-0.02em] text-white sm:text-[28px]">
-      {children}
-    </p>
+    <div className="my-14 border-y border-white/10 py-10 text-center">
+      <p className="mx-auto max-w-[32ch] text-[24px] font-medium leading-[1.4] tracking-[-0.02em] text-white sm:text-[27px]">
+        {children}
+      </p>
+    </div>
   );
 }
 

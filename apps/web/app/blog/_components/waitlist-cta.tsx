@@ -17,7 +17,7 @@ export function WaitlistCTA() {
         The payment layer for autonomous AI agents.
       </h3>
       <p className="mt-3 max-w-[46ch] text-[16px] leading-[1.6] text-white/55">
-        We&apos;re building the rails that let agents pay for any API, tool, or dataset — per call,
+        We&apos;re building the rails that let agents pay for any API, tool, or dataset, per call,
         in USDC on Stellar. Join the waitlist for early access and updates.
       </p>
 

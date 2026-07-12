@@ -16,7 +16,7 @@ export default function BlogIndex() {
         Notes on machine-native payments.
       </h1>
       <p className="mt-4 max-w-[52ch] text-[18px] leading-[1.6] text-white/55">
-        How autonomous agents pay for APIs, tools, and data — the ideas behind Tael and the x402
+        How autonomous agents pay for APIs, tools, and data. The ideas behind Tael and the x402
         protocol.
       </p>
 

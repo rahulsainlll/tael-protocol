@@ -1,26 +1,27 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+const BLOG_DESCRIPTION =
+  "Notes on machine-native payments, and how AI agents pay for APIs, tools, and data with x402 and USDC on Stellar.";
+
 export const metadata: Metadata = {
   title: "Blog",
-  description:
-    "Notes on machine-native payments — how AI agents pay for APIs, tools, and data with x402 and USDC on Stellar.",
+  description: BLOG_DESCRIPTION,
   alternates: { canonical: "/blog" },
   openGraph: {
     type: "website",
     url: "https://taelprotocol.xyz/blog",
     siteName: "Tael",
     title: "Tael Blog",
-    description:
-      "Notes on machine-native payments — how AI agents pay for APIs, tools, and data with x402 and USDC on Stellar.",
+    description: BLOG_DESCRIPTION,
   },
 };
 
 export default function BlogLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0e0e11] text-white">
       {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/85 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0e0e11]/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
           <a href="/" className="flex items-center gap-1">
             <span className="font-display text-[20px] leading-none text-accent">t</span>
