@@ -5,11 +5,19 @@ import {
   type SettlementReceipt,
 } from "@tael/payments";
 import { createStellarSettlement, type StellarNetwork } from "@tael/stellar";
+import { getDatabase } from "@tael/database";
 import { type Env } from "./env";
 import { InMemoryWalletRepository } from "./modules/wallets/wallet.repository";
 import { WalletService } from "./modules/wallets/wallet.service";
-import { InMemoryPaymentRepository } from "./modules/payments/payment.repository";
+import {
+  DbPaymentRepository,
+  InMemoryPaymentRepository,
+} from "./modules/payments/payment.repository";
 import { PaymentService } from "./modules/payments/payment.service";
+import {
+  DbCapabilityRepository,
+  type CapabilityRepository,
+} from "./modules/capabilities/capability.repository";
 
 /**
  * The composition root. This is the ONE place where concrete implementations are
@@ -20,7 +28,10 @@ import { PaymentService } from "./modules/payments/payment.service";
 export interface Container {
   wallets: WalletService;
   payments: PaymentService;
+  capabilities: CapabilityRepository;
   verifier: PaymentVerifier;
+  /** Payment settings the gateway needs to build x402 challenges. */
+  gateway: { issuer: string; network: PaymentNetwork; publicUrl: string };
 }
 
 function toPaymentNetwork(network: StellarNetwork): PaymentNetwork {
@@ -39,18 +50,41 @@ function createStellarVerifier(env: Env): PaymentVerifier {
   return {
     async verify(payload): Promise<SettlementReceipt> {
       const receipt = await settlement.submitSignedTransaction(payload.payload.transaction);
-      return { txHash: receipt.txHash, network, settledAt: new Date().toISOString() };
+      return {
+        txHash: receipt.txHash,
+        network,
+        settledAt: new Date().toISOString(),
+        payer: receipt.payer,
+      };
     },
   };
 }
 
 export function createContainer(env: Env): Container {
+  const isProd = env.NODE_ENV === "production";
+
   const wallets = new WalletService(new InMemoryWalletRepository());
-  const payments = new PaymentService(new InMemoryPaymentRepository());
+
+  // Persist to Postgres when a DATABASE_URL is configured (prod / real dev);
+  // fall back to the in-memory ledger so tests stay hermetic.
+  const db = process.env.DATABASE_URL ? getDatabase() : undefined;
+  const payments = new PaymentService(
+    db ? new DbPaymentRepository(db) : new InMemoryPaymentRepository(),
+  );
+  const capabilities = new DbCapabilityRepository(db);
 
   // Real on-chain settlement in production; a mock keeps dev + tests hermetic.
-  const verifier =
-    env.NODE_ENV === "production" ? createStellarVerifier(env) : createMockVerifier();
+  const verifier = isProd ? createStellarVerifier(env) : createMockVerifier();
 
-  return { wallets, payments, verifier };
+  return {
+    wallets,
+    payments,
+    capabilities,
+    verifier,
+    gateway: {
+      issuer: env.USDC_ISSUER,
+      network: toPaymentNetwork(env.STELLAR_NETWORK),
+      publicUrl: env.API_PUBLIC_URL,
+    },
+  };
 }

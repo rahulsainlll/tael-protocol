@@ -1,3 +1,10 @@
+import {
+  desc,
+  eq,
+  payments as paymentsTable,
+  type Database,
+  type Payment as PaymentRow,
+} from "@tael/database";
 import { type Payment } from "@tael/types";
 
 /** Port for payment persistence (see wallet.repository for the rationale). */
@@ -21,5 +28,54 @@ export class InMemoryPaymentRepository implements PaymentRepository {
 
   list(): Promise<Payment[]> {
     return Promise.resolve([...this.payments.values()]);
+  }
+}
+
+/** Map a persisted row to the domain {@link Payment} shape. */
+function toPayment(row: PaymentRow): Payment {
+  return {
+    id: row.id,
+    capabilityId: row.capabilityId ?? "",
+    payer: row.payer,
+    payee: row.payee,
+    amount: row.amount,
+    status: row.status as Payment["status"],
+    txHash: row.txHash,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** Postgres-backed adapter over @tael/database — the settlement ledger. */
+export class DbPaymentRepository implements PaymentRepository {
+  constructor(private readonly db: Database) {}
+
+  async save(payment: Payment): Promise<Payment> {
+    const [row] = await this.db
+      .insert(paymentsTable)
+      .values({
+        id: payment.id,
+        capabilityId: payment.capabilityId || null,
+        payer: payment.payer,
+        payee: payment.payee,
+        amount: payment.amount,
+        status: payment.status,
+        txHash: payment.txHash,
+      })
+      .returning();
+    return toPayment(row!);
+  }
+
+  async findById(id: string): Promise<Payment | null> {
+    const [row] = await this.db
+      .select()
+      .from(paymentsTable)
+      .where(eq(paymentsTable.id, id))
+      .limit(1);
+    return row ? toPayment(row) : null;
+  }
+
+  async list(): Promise<Payment[]> {
+    const rows = await this.db.select().from(paymentsTable).orderBy(desc(paymentsTable.createdAt));
+    return rows.map(toPayment);
   }
 }
