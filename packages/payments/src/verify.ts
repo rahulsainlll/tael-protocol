@@ -11,6 +11,8 @@ export interface SettlementReceipt {
   txHash: string;
   network: PaymentNetwork;
   settledAt: string;
+  /** The account that paid — the source of the settled transaction. */
+  payer: string;
 }
 
 /**
@@ -53,10 +55,12 @@ export function createMockVerifier(): PaymentVerifier {
   return {
     verify(payload) {
       const network = paymentNetworkSchema.parse(payload.network);
+      const hex = Buffer.from(payload.payload.transaction).toString("hex");
       return Promise.resolve({
-        txHash: `mock_${Buffer.from(payload.payload.transaction).toString("hex").slice(0, 32)}`,
+        txHash: `mock_${hex.slice(0, 32)}`,
         network,
         settledAt: new Date().toISOString(),
+        payer: `mock_payer_${hex.slice(0, 16)}`,
       });
     },
   };

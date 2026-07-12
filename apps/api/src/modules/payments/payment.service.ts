@@ -20,6 +20,30 @@ export class PaymentService {
     return this.repository.save(payment);
   }
 
+  /**
+   * Record a payment that has already settled on-chain — used by the gateway
+   * after a capability call is verified. Unlike {@link record}, the tx is known.
+   */
+  async recordSettled(input: {
+    capabilityId: string;
+    payer: string;
+    payee: string;
+    amount: string;
+    txHash: string;
+  }): Promise<Payment> {
+    const payment: Payment = {
+      id: crypto.randomUUID(),
+      capabilityId: input.capabilityId,
+      payer: input.payer,
+      payee: input.payee,
+      amount: input.amount,
+      status: "settled",
+      txHash: input.txHash,
+      createdAt: new Date().toISOString(),
+    };
+    return this.repository.save(payment);
+  }
+
   async get(id: string): Promise<Payment> {
     const payment = await this.repository.findById(id);
     if (!payment) {

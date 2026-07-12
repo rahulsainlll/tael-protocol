@@ -15,7 +15,9 @@
   "dependencies": {
     "@hono/node-server": "catalog:",
     "@stellar/stellar-sdk": "catalog:",
+    "@tael/database": "workspace:*",
     "@tael/payments": "workspace:*",
+    "@tael/sdk": "workspace:*",
     "@tael/stellar": "workspace:*",
     "@tael/types": "workspace:*",
     "@trpc/server": "catalog:",

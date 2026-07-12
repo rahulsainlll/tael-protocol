@@ -1,3 +1,4 @@
+import "./load-env"; // must be first — populates process.env for local dev
 import { serve } from "@hono/node-server";
 import { createContainer } from "./container";
 import { env } from "./env";

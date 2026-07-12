@@ -12,6 +12,11 @@ const envSchema = z.object({
   STELLAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
   STELLAR_HORIZON_URL: z.string().url().default("https://horizon-testnet.stellar.org"),
   USDC_ISSUER: z.string().default("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"),
+  // Consumed by @tael/database and its crypto helper. Optional here so tests stay
+  // hermetic (the in-memory repos need neither); the gateway throws a clear error
+  // at runtime if it's asked to read a capability without them.
+  DATABASE_URL: z.string().url().optional(),
+  ENCRYPTION_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -158,9 +158,15 @@ importers:
       '@stellar/stellar-sdk':
         specifier: 'catalog:'
         version: 13.3.0
+      '@tael/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@tael/payments':
         specifier: workspace:*
         version: link:../../packages/payments
+      '@tael/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       '@tael/stellar':
         specifier: workspace:*
         version: link:../../packages/stellar
