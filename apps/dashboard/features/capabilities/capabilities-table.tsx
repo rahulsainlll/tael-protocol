@@ -101,7 +101,10 @@ export function CapabilitiesTable({ items }: { items: CapabilityListItem[] }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-medium">${formatPrice(c.price)}</td>
+                  <td className="px-4 py-3 font-medium">
+                    ${formatPrice(c.price)}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">USDC</span>
+                  </td>
                   <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                     {c.faqCount}
                   </td>

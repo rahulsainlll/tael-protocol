@@ -39,7 +39,7 @@ export function CapabilityCard({ capability }: { capability: MarketplaceItem }) 
             <span className="font-mono text-xs text-muted-foreground">/{capability.slug}</span>
             <span className="text-sm font-semibold">
               ${formatPrice(capability.price)}
-              <span className="text-xs font-normal text-muted-foreground">/call</span>
+              <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
             </span>
           </div>
         </CardContent>

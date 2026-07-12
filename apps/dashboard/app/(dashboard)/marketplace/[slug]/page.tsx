@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, Code2, HelpCircle } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronDown, Code2 } from "lucide-react";
 import { Button, cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
 import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilities/kind-meta";
@@ -71,7 +71,7 @@ export default async function CapabilityDetailPage({
         </Meta>
         <Meta label="Price">
           <span className="font-medium">
-            {operations.length > 1 ? "from " : ""}${formatPrice(capability.price)}/call
+            {operations.length > 1 ? "from " : ""}${formatPrice(capability.price)} USDC/call
           </span>
         </Meta>
         <Meta label="Published">
@@ -118,7 +118,7 @@ export default async function CapabilityDetailPage({
                   </code>
                   <span className="ml-auto text-sm font-semibold">
                     ${formatPrice(op.price)}
-                    <span className="text-xs font-normal text-muted-foreground">/call</span>
+                    <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
                   </span>
                 </div>
                 {op.sampleRequest || op.sampleResponse ? (
@@ -137,18 +137,21 @@ export default async function CapabilityDetailPage({
         </section>
       ) : null}
 
-      {/* FAQ — visible to buyers */}
+      {/* FAQ — visible to buyers, collapsed by default */}
       {capability.faqs.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            <HelpCircle className="h-4 w-4" /> FAQ
-          </h2>
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">FAQ</h2>
           <div className="divide-y rounded-xl border">
             {capability.faqs.map((faq, i) => (
-              <div key={i} className="space-y-1.5 p-4">
-                <p className="text-sm font-semibold">{faq.question}</p>
-                <p className="text-sm leading-relaxed text-muted-foreground">{faq.answer}</p>
-              </div>
+              <details key={i} className="group p-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold">
+                  {faq.question}
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
+                  {faq.answer}
+                </p>
+              </details>
             ))}
           </div>
         </section>
