@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { WaitlistTrigger } from "./waitlist-trigger";
 
-const NAV_LINKS = ["Products", "Community", "Docs"];
+const NAV_LINKS = ["Products", "Community", "Blog", "Docs"];
 
 // Real destinations for nav links that have one; others fall back to "#".
 const NAV_HREFS: Record<string, string> = {
   Community: "https://discord.gg/tcb6b7ZYha",
+  Blog: "/blog",
   Docs: "/docs",
 };
 
