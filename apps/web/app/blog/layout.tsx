@@ -35,7 +35,7 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
             </a>
             <a
               href="/"
-              className="rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-black transition-opacity hover:opacity-90"
+              className="rounded-full bg-white px-4 py-1.5 text-[13px] font-semibold text-black transition-[opacity,transform] duration-150 hover:opacity-90 active:scale-[0.97]"
             >
               Join waitlist
             </a>

@@ -57,7 +57,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   };
 
   return (
-    <main className="mx-auto max-w-[720px] px-6 pb-28 pt-16">
+    <main className="mx-auto max-w-[680px] px-6 pb-28 pt-16">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
