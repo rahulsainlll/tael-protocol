@@ -35,6 +35,12 @@ export interface TaelOptions {
   verifier: PaymentVerifier;
   /** Human description shown in the 402 challenge. */
   description?: string;
+  /**
+   * Optional marketplace fee taken out of `price` and paid to `fee.payTo` in the
+   * same transaction. Used by the Tael gateway; omit it for self-hosted routes
+   * (the developer keeps 100%).
+   */
+  fee?: { payTo: StellarAddress; bps: number };
   handler: TaelHandler;
 }
 
@@ -65,6 +71,7 @@ export function tael(options: TaelOptions): FetchHandler {
       network: options.network,
       resource,
       description: options.description,
+      fee: options.fee,
     });
 
     const paymentRequired = (error?: string): Response =>

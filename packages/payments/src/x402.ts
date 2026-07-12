@@ -36,19 +36,48 @@ export const assetSchema = z.object({
   issuer: stellarAddressSchema,
 });
 
+/**
+ * An optional platform fee leg. When present, the payer must — atomically, in
+ * the same transaction — pay `amount` to `payTo` (the marketplace) in addition
+ * to the main payment. This keeps fee collection non-custodial: the fee lands
+ * directly in the marketplace's wallet, never held by anyone.
+ */
+export const paymentFeeSchema = z.object({
+  payTo: stellarAddressSchema,
+  amount: moneyAmountSchema,
+});
+export type PaymentFee = z.infer<typeof paymentFeeSchema>;
+
 export const paymentRequirementsSchema = z.object({
   scheme: paymentSchemeSchema,
   network: paymentNetworkSchema,
-  /** The exact amount required, as a decimal string. */
+  /** The amount required for the main payee (the builder's net share). */
   maxAmountRequired: moneyAmountSchema,
   payTo: stellarAddressSchema,
   asset: assetSchema,
+  /** Optional marketplace fee paid in the same transaction. */
+  fee: paymentFeeSchema.optional(),
   /** Identifier of the resource being paid for (usually the request path). */
   resource: z.string().min(1),
   description: z.string().default(""),
   maxTimeoutSeconds: z.number().int().positive().default(60),
 });
 export type PaymentRequirements = z.infer<typeof paymentRequirementsSchema>;
+
+/**
+ * Split a total price into the payee's net share and a marketplace fee, using
+ * integer (atomic) math so amounts are exact. `bps` is basis points — 100 = 1%.
+ * The fee rounds down, so the payee never receives less than `total - ceil(fee)`.
+ */
+export function splitFee(
+  total: MoneyAmount | Money,
+  bps: number,
+): { net: MoneyAmount; fee: MoneyAmount } {
+  const money = total instanceof Money ? total : Money.parse(total);
+  if (bps <= 0) return { net: money.toDecimalString(), fee: "0" };
+  const fee = Money.ofAtomic((money.atomic * BigInt(bps)) / 10000n);
+  return { net: money.subtract(fee).toDecimalString(), fee: fee.toDecimalString() };
+}
 
 /** The JSON body of a `402 Payment Required` response. */
 export const paymentRequiredSchema = z.object({
@@ -71,23 +100,39 @@ export const paymentPayloadSchema = z.object({
 export type PaymentPayload = z.infer<typeof paymentPayloadSchema>;
 
 export interface BuildRequirementsOptions {
+  /** Total price the payer pays (before splitting out any fee). */
   price: MoneyAmount | Money;
   payTo: StellarAddress;
   network: PaymentNetwork;
   issuer: StellarAddress;
   resource: string;
   description?: string;
+  /**
+   * Optional marketplace fee taken out of `price`. When set, the payee receives
+   * `price - fee` and `fee.payTo` receives the fee — atomically, same tx.
+   */
+  fee?: { payTo: StellarAddress; bps: number };
 }
 
 /** Build a single {@link PaymentRequirements} entry from a capability's price. */
 export function buildPaymentRequirements(options: BuildRequirementsOptions): PaymentRequirements {
-  const amount = options.price instanceof Money ? options.price.toDecimalString() : options.price;
+  const total = options.price instanceof Money ? options.price.toDecimalString() : options.price;
+
+  let maxAmountRequired = total;
+  let fee: PaymentFee | undefined;
+  if (options.fee && options.fee.bps > 0) {
+    const split = splitFee(total, options.fee.bps);
+    maxAmountRequired = split.net;
+    fee = { payTo: options.fee.payTo, amount: split.fee };
+  }
+
   return paymentRequirementsSchema.parse({
     scheme: "exact",
     network: options.network,
-    maxAmountRequired: amount,
+    maxAmountRequired,
     payTo: options.payTo,
     asset: { code: "USDC", issuer: options.issuer },
+    fee,
     resource: options.resource,
     description: options.description ?? "",
   });
