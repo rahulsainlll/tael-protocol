@@ -75,7 +75,9 @@ export async function generateQuestions(input: {
  * stores its real captured response as the public sample. Headline price is the
  * cheapest operation.
  */
-export async function publishCapability(formData: FormData): Promise<ActionResult> {
+export async function publishCapability(
+  formData: FormData,
+): Promise<ActionResult & { slug?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
@@ -123,7 +125,7 @@ export async function publishCapability(formData: FormData): Promise<ActionResul
 
   revalidatePath("/capabilities");
   revalidatePath("/marketplace");
-  return { ok: true };
+  return { ok: true, slug };
 }
 
 /** Delete a capability the signed-in user owns. */

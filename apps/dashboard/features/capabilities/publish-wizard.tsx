@@ -8,8 +8,10 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  ExternalLink,
   FileText,
   FlaskConical,
+  PartyPopper,
   Play,
   Plus,
   Sparkles,
@@ -23,7 +25,7 @@ import { HTTP_METHODS, kindFields } from "./kind-fields";
 const KINDS = ["api", "mcp", "agent", "model", "dataset"] as const;
 type Kind = (typeof KINDS)[number];
 
-type Step = "describe" | "test" | "verify";
+type Step = "describe" | "test" | "verify" | "done";
 type Answer = { question: string; answer: string };
 type Operation = {
   name: string;
@@ -42,14 +44,21 @@ export function PublishWizard() {
   const [step, setStep] = useState<Step>("describe");
   const [kind, setKind] = useState<Kind>("api");
   const [operations, setOperations] = useState<Operation[]>([newOperation()]);
-  const [describe, setDescribe] = useState<Record<string, string>>({});
+  // Describe-step fields live in state (controlled) so they survive navigating
+  // back and forth between steps instead of resetting.
+  const [describe, setDescribe] = useState<Record<string, string>>({ visibility: "public" });
   const [results, setResults] = useState<Record<number, TestResult>>({});
   const [testingIndex, setTestingIndex] = useState<number | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [publishedSlug, setPublishedSlug] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const fields = kindFields(kind);
+
+  function setField(key: string, value: string) {
+    setDescribe((prev) => ({ ...prev, [key]: value }));
+  }
 
   function updateOp(i: number, patch: Partial<Operation>) {
     setOperations((prev) => prev.map((op, j) => (j === i ? { ...op, ...patch } : op)));
@@ -62,12 +71,15 @@ export function PublishWizard() {
     });
   }
 
-  // Step 1 → 2: capture the metadata and move to the interactive Test step.
-  function onDescribe(formData: FormData) {
+  // Step 1 → 2: validate the (already-captured) metadata and move to Test.
+  function onDescribe() {
     setError(null);
-    const values: Record<string, string> = {};
-    formData.forEach((v, k) => (values[k] = typeof v === "string" ? v : ""));
-    if (!values.name || !values.description || !values.upstreamUrl || !values.payTo) {
+    if (
+      !describe.name?.trim() ||
+      !describe.description?.trim() ||
+      !describe.upstreamUrl?.trim() ||
+      !describe.payTo?.trim()
+    ) {
       setError("Fill in name, description, endpoint URL, and pay-to.");
       return;
     }
@@ -75,7 +87,6 @@ export function PublishWizard() {
       setError("Each request needs a price.");
       return;
     }
-    setDescribe(values);
     setStep("test");
   }
 
@@ -109,9 +120,14 @@ export function PublishWizard() {
   const allTested = operations.every((_, i) => results[i]);
   const anyOk = operations.some((_, i) => results[i]?.ok);
 
-  // Step 2 → 3: generate FAQ questions from the real captured response.
+  // Step 2 → 3: generate FAQ questions from the real captured response. Only
+  // generate once — re-entering Verify keeps the answers the publisher typed.
   function continueToVerify() {
     setError(null);
+    if (answers.length > 0) {
+      setStep("verify");
+      return;
+    }
     const okIdx = operations.findIndex((_, i) => results[i]?.ok);
     startTransition(async () => {
       const res = await generateQuestions({
@@ -134,12 +150,15 @@ export function PublishWizard() {
     setError(null);
     const formData = new FormData();
     Object.entries(describe).forEach(([k, v]) => formData.set(k, v));
+    formData.set("kind", kind);
     formData.set("operations", JSON.stringify(operations));
     formData.set("faqs", JSON.stringify(answers));
     startTransition(async () => {
       const result = await publishCapability(formData);
       if (result.ok) {
-        router.push("/capabilities");
+        setPublishedSlug(result.slug ?? null);
+        setStep("done");
+        // Refresh the list in the background so it's current when they go back.
         router.refresh();
       } else {
         setError(result.error ?? "Could not publish.");
@@ -167,14 +186,25 @@ export function PublishWizard() {
             </p>
           </div>
 
-          <form action={onDescribe} className="space-y-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onDescribe();
+            }}
+            className="space-y-4"
+          >
             <Field label="Name">
-              <Input name="name" placeholder="Document OCR" required />
+              <Input
+                value={describe.name ?? ""}
+                onChange={(e) => setField("name", e.target.value)}
+                placeholder="Document OCR"
+                required
+              />
             </Field>
 
             <Field label="Kind">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                {KINDS.map((k, i) => {
+                {KINDS.map((k) => {
                   const km = kindMeta(k);
                   const Icon = km.icon;
                   return (
@@ -186,7 +216,7 @@ export function PublishWizard() {
                         type="radio"
                         name="kind"
                         value={k}
-                        defaultChecked={i === 0}
+                        checked={kind === k}
                         onChange={() => setKind(k)}
                         className="sr-only"
                       />
@@ -202,8 +232,8 @@ export function PublishWizard() {
 
             <Field label="Visibility">
               <select
-                name="visibility"
-                defaultValue="public"
+                value={describe.visibility ?? "public"}
+                onChange={(e) => setField("visibility", e.target.value)}
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               >
                 <option value="public">Public</option>
@@ -214,7 +244,8 @@ export function PublishWizard() {
 
             <Field label="Description">
               <textarea
-                name="description"
+                value={describe.description ?? ""}
+                onChange={(e) => setField("description", e.target.value)}
                 required
                 rows={3}
                 placeholder="What does it do, and what should a buyer expect?"
@@ -223,11 +254,22 @@ export function PublishWizard() {
             </Field>
 
             <Field label={fields.urlLabel}>
-              <Input name="upstreamUrl" type="url" placeholder={fields.urlPlaceholder} required />
+              <Input
+                value={describe.upstreamUrl ?? ""}
+                onChange={(e) => setField("upstreamUrl", e.target.value)}
+                type="url"
+                placeholder={fields.urlPlaceholder}
+                required
+              />
             </Field>
 
             <Field label="Upstream secret (encrypted at rest)">
-              <Input name="upstreamSecret" type="password" placeholder="sk-… (optional)" />
+              <Input
+                value={describe.upstreamSecret ?? ""}
+                onChange={(e) => setField("upstreamSecret", e.target.value)}
+                type="password"
+                placeholder="sk-… (optional)"
+              />
             </Field>
 
             <div className="space-y-3">
@@ -311,7 +353,12 @@ export function PublishWizard() {
             </div>
 
             <Field label="Pay to (Stellar address)">
-              <Input name="payTo" placeholder="G…" required />
+              <Input
+                value={describe.payTo ?? ""}
+                onChange={(e) => setField("payTo", e.target.value)}
+                placeholder="G…"
+                required
+              />
             </Field>
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -366,7 +413,7 @@ export function PublishWizard() {
                       </span>
                     ) : null}
                     <span className="ml-auto text-sm font-medium text-muted-foreground">
-                      ${op.price}/call
+                      ${op.price} USDC/call
                     </span>
                   </div>
 
@@ -425,7 +472,7 @@ export function PublishWizard() {
             </div>
           </div>
         </div>
-      ) : (
+      ) : step === "verify" ? (
         <div className="space-y-6">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
@@ -475,6 +522,39 @@ export function PublishWizard() {
             </div>
           </div>
         </div>
+      ) : (
+        <div className="flex flex-col items-center py-6 text-center">
+          <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/20" />
+            <span className="relative inline-flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10">
+              <PartyPopper className="h-9 w-9 text-emerald-600" />
+            </span>
+          </div>
+
+          <div className="animate-in fade-in zoom-in-95 space-y-3 duration-500">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Live
+            </span>
+            <h1 className="text-2xl font-semibold tracking-tight">You&apos;re live</h1>
+            <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{describe.name}</span> is published and
+              verified. Agents can discover it and pay per call in USDC now.
+            </p>
+          </div>
+
+          <div className="mt-8 flex w-full max-w-xs flex-col gap-2">
+            {publishedSlug ? (
+              <Button asChild className="w-full">
+                <Link href={`/marketplace/${publishedSlug}`}>
+                  <ExternalLink className="h-4 w-4" /> View live listing
+                </Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/capabilities">Back to My Capabilities</Link>
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -487,7 +567,8 @@ function StepIndicator({ step }: { step: Step }) {
     { key: "verify", label: "Verify", icon: Sparkles },
     { key: "done", label: "Publish", icon: Check },
   ];
-  const activeIndex = step === "describe" ? 0 : step === "test" ? 1 : 2;
+  const activeIndex =
+    step === "describe" ? 0 : step === "test" ? 1 : step === "verify" ? 2 : 3;
 
   return (
     <div className="flex items-center gap-2">
