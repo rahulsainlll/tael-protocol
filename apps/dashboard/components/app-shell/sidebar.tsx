@@ -10,7 +10,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r bg-card/40 md:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r bg-card/40 md:flex">
       <div className="flex h-14 items-center border-b px-6">
         <Link href="/">
           <TaelLogo />

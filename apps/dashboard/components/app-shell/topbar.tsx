@@ -10,7 +10,7 @@ export async function Topbar() {
   const session = await getSession();
 
   return (
-    <header className="flex h-14 items-center justify-end gap-3 border-b px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-3 border-b bg-background/80 px-6 backdrop-blur">
       <ThemeToggle />
       {session ? (
         <div className="flex items-center gap-3">
