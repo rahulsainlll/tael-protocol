@@ -4,14 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@tael/ui";
 import { navItems } from "../../features/navigation/nav.config";
+import { TaelLogo } from "../logo";
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-card/40 md:flex">
-      <div className="flex h-14 items-center gap-2 border-b px-6">
-        <span className="text-lg font-semibold tracking-tight">Tael</span>
+      <div className="flex h-14 items-center border-b px-6">
+        <Link href="/">
+          <TaelLogo />
+        </Link>
       </div>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {navItems.map((item) => {
