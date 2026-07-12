@@ -1,9 +1,11 @@
 import type { MetadataRoute } from "next";
+import { posts } from "./blog/_posts";
 
 const SITE_URL = "https://taelprotocol.xyz";
 
 const paths = [
   "",
+  "/blog",
   "/docs",
   "/docs/quickstart",
   "/docs/authentication",
@@ -11,6 +13,7 @@ const paths = [
   "/docs/wrap-an-api",
   "/docs/sdk/node",
   "/docs/sdk/curl",
+  ...posts.map((post) => `/blog/${post.slug}`),
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
