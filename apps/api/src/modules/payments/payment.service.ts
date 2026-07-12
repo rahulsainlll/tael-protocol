@@ -13,6 +13,7 @@ export class PaymentService {
       payer: input.payer,
       payee: input.payee,
       amount: input.amount,
+      fee: "0",
       status: "pending",
       txHash: null,
       createdAt: new Date().toISOString(),
@@ -23,12 +24,14 @@ export class PaymentService {
   /**
    * Record a payment that has already settled on-chain — used by the gateway
    * after a capability call is verified. Unlike {@link record}, the tx is known.
+   * `amount` is the builder's net share; `fee` is Tael's cut from the same tx.
    */
   async recordSettled(input: {
     capabilityId: string;
     payer: string;
     payee: string;
     amount: string;
+    fee: string;
     txHash: string;
   }): Promise<Payment> {
     const payment: Payment = {
@@ -37,6 +40,7 @@ export class PaymentService {
       payer: input.payer,
       payee: input.payee,
       amount: input.amount,
+      fee: input.fee,
       status: "settled",
       txHash: input.txHash,
       createdAt: new Date().toISOString(),

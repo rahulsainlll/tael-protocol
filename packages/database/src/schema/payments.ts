@@ -19,8 +19,10 @@ export const payments = pgTable(
     /** Payer + payee Stellar addresses (denormalized so history is self-contained). */
     payer: text("payer").notNull(),
     payee: text("payee").notNull(),
-    /** Amount in USDC, decimal string. */
+    /** Amount the payee (builder) receives, in USDC. */
     amount: numeric("amount", { precision: 20, scale: 7 }).notNull(),
+    /** Marketplace fee taken by Tael in the same transaction, in USDC. */
+    fee: numeric("fee", { precision: 20, scale: 7 }).notNull().default("0"),
 
     status: paymentStatus("status").notNull().default("pending"),
     /** Stellar transaction hash once settled; null while pending. */

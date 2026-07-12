@@ -10,7 +10,10 @@ export const paymentSchema = z.object({
   capabilityId: z.string(),
   payer: stellarAddressSchema,
   payee: stellarAddressSchema,
+  /** Amount the payee (builder) receives, in USDC. */
   amount: moneyAmountSchema,
+  /** Marketplace fee taken by Tael in the same transaction, in USDC. */
+  fee: moneyAmountSchema.default("0"),
   status: paymentStatusSchema,
   /** Stellar transaction hash once settled; `null` while pending. */
   txHash: z.string().nullable(),

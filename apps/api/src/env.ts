@@ -17,6 +17,11 @@ const envSchema = z.object({
   // at runtime if it's asked to read a capability without them.
   DATABASE_URL: z.string().url().optional(),
   ENCRYPTION_KEY: z.string().optional(),
+  // Marketplace fee. When TAEL_FEE_ADDRESS is set, the gateway takes TAEL_FEE_BPS
+  // of each call's price and routes it to that Stellar address in the same tx
+  // (non-custodial). Unset → no fee (builder keeps 100%). 100 bps = 1%.
+  TAEL_FEE_ADDRESS: z.string().optional(),
+  TAEL_FEE_BPS: z.coerce.number().int().min(0).max(10000).default(100),
 });
 
 export type Env = z.infer<typeof envSchema>;

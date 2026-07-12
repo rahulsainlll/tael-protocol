@@ -37,7 +37,10 @@ function fakeCapabilities(capability: ServableCapability | null): CapabilityRepo
   };
 }
 
-function buildContainer(capability: ServableCapability | null): {
+function buildContainer(
+  capability: ServableCapability | null,
+  fee?: { feeAddress: string; feeBps: number },
+): {
   container: Container;
   payments: PaymentService;
 } {
@@ -47,7 +50,13 @@ function buildContainer(capability: ServableCapability | null): {
     payments,
     capabilities: fakeCapabilities(capability),
     verifier: createMockVerifier(),
-    gateway: { issuer: ADDRESS, network: "stellar-testnet", publicUrl: "http://localhost:3001" },
+    gateway: {
+      issuer: ADDRESS,
+      network: "stellar-testnet",
+      publicUrl: "http://localhost:3001",
+      feeAddress: fee?.feeAddress,
+      feeBps: fee?.feeBps ?? 0,
+    },
   };
   return { container, payments };
 }
@@ -110,17 +119,44 @@ describe("capability gateway", () => {
     expect(upstream).toHaveBeenCalledOnce();
     expect(upstream.mock.calls[0]?.[0]).toBe("https://api.example.com/age");
 
-    // …and the settlement was recorded.
+    // …and the settlement was recorded (no fee configured → builder keeps 100%).
     const ledger = await payments.list();
     expect(ledger).toHaveLength(1);
     expect(ledger[0]).toMatchObject({
       capabilityId: "cap-1",
       payee: ADDRESS,
       amount: "0.02",
+      fee: "0",
       status: "settled",
     });
     expect(ledger[0]?.txHash).toBeTruthy();
     expect(ledger[0]?.payer).toContain("mock_payer_");
+  });
+
+  it("splits out the marketplace fee when one is configured", async () => {
+    const feeAddress = "GC62IXD4GCRMGDR34NIWG3TVCECGBJHVW3UW7URX4F6CF54WIOMSLBRK";
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    // 1% fee on a 0.02 price → builder nets 0.0198, Tael takes 0.0002.
+    const { container, payments } = buildContainer(CAPABILITY, { feeAddress, feeBps: 100 });
+    const app = createServer(container);
+
+    // The 402 challenge advertises the split.
+    const challenge = await app.request("/c/predict-age");
+    const body = (await challenge.json()) as {
+      accepts: { maxAmountRequired: string; fee?: { payTo: string; amount: string } }[];
+    };
+    expect(body.accepts[0]?.maxAmountRequired).toBe("0.0198");
+    expect(body.accepts[0]?.fee).toEqual({ payTo: feeAddress, amount: "0.0002" });
+
+    // And a paid call records the builder's net + Tael's fee.
+    await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+    const ledger = await payments.list();
+    expect(ledger[0]).toMatchObject({ amount: "0.0198", fee: "0.0002", status: "settled" });
   });
 
   it("does not forward the X-PAYMENT header to the upstream", async () => {

@@ -2,14 +2,60 @@ import { describe, expect, it } from "vitest";
 import { PaymentVerificationError } from "@tael/types";
 import {
   buildPaymentRequired,
+  buildPaymentRequirements,
   decodePaymentHeader,
   encodePaymentPayload,
+  splitFee,
   X402_VERSION,
   type PaymentPayload,
 } from "./x402";
 import { createMockVerifier, verifyPayment } from "./verify";
 
 const ADDRESS = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+const FEE_ADDRESS = "GC62IXD4GCRMGDR34NIWG3TVCECGBJHVW3UW7URX4F6CF54WIOMSLBRK";
+
+describe("splitFee", () => {
+  it("splits a price into net + fee using basis points", () => {
+    expect(splitFee("0.02", 100)).toEqual({ net: "0.0198", fee: "0.0002" });
+    expect(splitFee("1", 250)).toEqual({ net: "0.975", fee: "0.025" });
+  });
+
+  it("returns the full amount and zero fee when bps is 0", () => {
+    expect(splitFee("0.02", 0)).toEqual({ net: "0.02", fee: "0" });
+  });
+
+  it("net + fee always reconstitutes the total (no value lost)", () => {
+    // 0.0000001 (one stroop) at 1% rounds the fee down to 0.
+    expect(splitFee("0.0000001", 100)).toEqual({ net: "0.0000001", fee: "0" });
+  });
+});
+
+describe("buildPaymentRequirements with a fee", () => {
+  it("emits a fee leg and reduces the main amount", () => {
+    const req = buildPaymentRequirements({
+      price: "0.02",
+      payTo: ADDRESS,
+      issuer: ADDRESS,
+      network: "stellar-testnet",
+      resource: "/c/x",
+      fee: { payTo: FEE_ADDRESS, bps: 100 },
+    });
+    expect(req.maxAmountRequired).toBe("0.0198");
+    expect(req.fee).toEqual({ payTo: FEE_ADDRESS, amount: "0.0002" });
+  });
+
+  it("omits the fee leg when no fee is set", () => {
+    const req = buildPaymentRequirements({
+      price: "0.02",
+      payTo: ADDRESS,
+      issuer: ADDRESS,
+      network: "stellar-testnet",
+      resource: "/c/x",
+    });
+    expect(req.maxAmountRequired).toBe("0.02");
+    expect(req.fee).toBeUndefined();
+  });
+});
 
 describe("x402 challenge", () => {
   it("builds a 402 body from a price", () => {

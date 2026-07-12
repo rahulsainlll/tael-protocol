@@ -1,4 +1,5 @@
 import { tael } from "@tael/sdk";
+import { splitFee } from "@tael/payments";
 import { type Container } from "../../container";
 import { proxyToUpstream, isBlockedUrl } from "./upstream";
 
@@ -36,6 +37,14 @@ export async function handleGatewayRequest(
     return json({ error: "Capability upstream is unavailable" }, 502);
   }
 
+  // Take the marketplace fee out of the price (non-custodial: it's paid directly
+  // to Tael in the same tx). No fee address configured → builder keeps 100%.
+  const fee =
+    deps.gateway.feeAddress && deps.gateway.feeBps > 0
+      ? { payTo: deps.gateway.feeAddress, bps: deps.gateway.feeBps }
+      : undefined;
+  const split = splitFee(capability.price, fee ? deps.gateway.feeBps : 0);
+
   const paid = tael({
     price: capability.price,
     payTo: capability.payTo,
@@ -43,6 +52,7 @@ export async function handleGatewayRequest(
     network: deps.gateway.network,
     verifier: deps.verifier,
     description: capability.name,
+    fee,
     handler: async ({ request: paidRequest, receipt }) => {
       // The payment settled during verification — record it before doing the
       // work, so the ledger is correct even if the upstream then misbehaves.
@@ -51,7 +61,8 @@ export async function handleGatewayRequest(
           capabilityId: capability.id,
           payer: receipt.payer,
           payee: capability.payTo,
-          amount: capability.price,
+          amount: split.net,
+          fee: split.fee,
           txHash: receipt.txHash,
         });
       } catch (error) {

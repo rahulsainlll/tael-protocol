@@ -4,7 +4,13 @@ import {
   type PaymentVerifier,
   type SettlementReceipt,
 } from "@tael/payments";
-import { createStellarSettlement, type StellarNetwork } from "@tael/stellar";
+import { PaymentVerificationError } from "@tael/types";
+import {
+  createStellarSettlement,
+  verifyTransactionPayments,
+  type ExpectedPayment,
+  type StellarNetwork,
+} from "@tael/stellar";
 import { getDatabase } from "@tael/database";
 import { type Env } from "./env";
 import { InMemoryWalletRepository } from "./modules/wallets/wallet.repository";
@@ -31,7 +37,15 @@ export interface Container {
   capabilities: CapabilityRepository;
   verifier: PaymentVerifier;
   /** Payment settings the gateway needs to build x402 challenges. */
-  gateway: { issuer: string; network: PaymentNetwork; publicUrl: string };
+  gateway: {
+    issuer: string;
+    network: PaymentNetwork;
+    publicUrl: string;
+    /** Marketplace fee recipient (Stellar address); undefined = no fee. */
+    feeAddress?: string;
+    /** Fee in basis points (100 = 1%). */
+    feeBps: number;
+  };
 }
 
 function toPaymentNetwork(network: StellarNetwork): PaymentNetwork {
@@ -48,13 +62,32 @@ function createStellarVerifier(env: Env): PaymentVerifier {
   const network = toPaymentNetwork(env.STELLAR_NETWORK);
 
   return {
-    async verify(payload): Promise<SettlementReceipt> {
+    async verify(payload, requirements): Promise<SettlementReceipt> {
+      // Validate — offline — that the signed tx actually pays the required legs
+      // (builder + any fee) in USDC, BEFORE submitting. Without this the gateway
+      // would settle and serve any well-formed transaction (submit-and-trust).
+      const expected: ExpectedPayment[] = [
+        { to: requirements.payTo, minAmount: requirements.maxAmountRequired },
+      ];
+      if (requirements.fee) {
+        expected.push({ to: requirements.fee.payTo, minAmount: requirements.fee.amount });
+      }
+      const check = verifyTransactionPayments(
+        payload.payload.transaction,
+        env.STELLAR_NETWORK,
+        env.USDC_ISSUER,
+        expected,
+      );
+      if (!check.ok) {
+        throw new PaymentVerificationError(check.reason ?? "Payment does not satisfy requirements");
+      }
+
       const receipt = await settlement.submitSignedTransaction(payload.payload.transaction);
       return {
         txHash: receipt.txHash,
         network,
         settledAt: new Date().toISOString(),
-        payer: receipt.payer,
+        payer: check.payer ?? receipt.payer,
       };
     },
   };
@@ -85,6 +118,8 @@ export function createContainer(env: Env): Container {
       issuer: env.USDC_ISSUER,
       network: toPaymentNetwork(env.STELLAR_NETWORK),
       publicUrl: env.API_PUBLIC_URL,
+      feeAddress: env.TAEL_FEE_ADDRESS,
+      feeBps: env.TAEL_FEE_BPS,
     },
   };
 }
