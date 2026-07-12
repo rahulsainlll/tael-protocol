@@ -38,7 +38,7 @@ export function WaitlistForm({ className = "mt-8 max-w-[464px]" }: { className?:
   }
 
   return (
-    <form id="waitlist" onSubmit={onSubmit} noValidate className={className}>
+    <form onSubmit={onSubmit} noValidate className={className}>
       <div className="relative">
         <input
           id="waitlist-email"

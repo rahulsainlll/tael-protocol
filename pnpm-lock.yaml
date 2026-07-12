@@ -277,6 +277,9 @@ importers:
       next:
         specifier: 'catalog:'
         version: 15.5.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      next-themes:
+        specifier: 'catalog:'
+        version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: 'catalog:'
         version: 19.2.7

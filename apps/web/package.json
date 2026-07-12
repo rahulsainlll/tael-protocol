@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "next": "catalog:",
+    "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "resend": "^6.17.2"

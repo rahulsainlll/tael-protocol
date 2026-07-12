@@ -7,7 +7,7 @@ const COLUMNS = [
 
 // Real destinations for links that have one; others fall back to "#".
 const HREFS: Record<string, string> = {
-  Guide: "/coming-soon",
+  Guide: "/docs",
   FAQs: "/coming-soon",
   Discord: "https://discord.gg/tcb6b7ZYha",
   X: "https://x.com/taelprotocol?s=21",
