@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 /**
  * Editorial prose primitives for the blog — a dark, spacious reading experience
  * (inspired by animations.dev) on Tael's brand: near-black canvas, generous
- * line-height, serif italics for emphasis, and the blue accent for links.
+ * line-height, serif italics for emphasis, and underlined (monochrome) links.
  */
 
 export function Lead({ children }: { children: ReactNode }) {
@@ -48,7 +48,7 @@ export function A({ href, children }: { href: string; children: ReactNode }) {
     <a
       href={href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="font-medium text-accent underline decoration-accent/30 underline-offset-2 transition-colors hover:decoration-accent"
+      className="font-medium text-white underline decoration-white/30 underline-offset-2 transition-colors hover:decoration-white"
     >
       {children}
     </a>
