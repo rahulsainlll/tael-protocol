@@ -1,0 +1,28 @@
+{
+  "name": "@tael/claude",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Claude-powered helpers for Tael (FAQ generation, capability checks).",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .turbo"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "catalog:",
+    "@tael/types": "workspace:*",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@tael/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
