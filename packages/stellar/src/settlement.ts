@@ -6,6 +6,8 @@ import { networkPassphrase, type StellarConfig, type StellarNetwork } from "./co
 export interface StellarTxReceipt {
   txHash: string;
   network: StellarNetwork;
+  /** Source account of the transaction — i.e. who paid. */
+  payer: string;
 }
 
 /**
@@ -30,8 +32,13 @@ export class StellarSettlement {
         signedXdr,
         networkPassphrase(this.config.network),
       );
+      // Fee-bump txs wrap an inner tx; the payer is the inner source in that case.
+      const payer =
+        "innerTransaction" in transaction
+          ? transaction.innerTransaction.source
+          : transaction.source;
       const result = await this.server.submitTransaction(transaction);
-      return { txHash: result.hash, network: this.config.network };
+      return { txHash: result.hash, network: this.config.network, payer };
     } catch (cause) {
       throw new TaelError("SETTLEMENT_FAILED", "Failed to submit transaction to Stellar", {
         cause,
