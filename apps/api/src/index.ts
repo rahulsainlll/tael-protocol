@@ -7,6 +7,10 @@ import { createServer } from "./server";
 const container = createContainer(env);
 const app = createServer(container);
 
-serve({ fetch: app.fetch, port: env.API_PORT }, (info) => {
-  console.log(`▲ Tael API listening on http://localhost:${info.port}`);
+// Cloud hosts (Railway/Render/Fly) inject the port to bind via `PORT`; fall back
+// to API_PORT for local dev. Bind 0.0.0.0 so the platform proxy can reach it.
+const port = Number(process.env.PORT) || env.API_PORT;
+
+serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, (info) => {
+  console.log(`▲ Tael API listening on port ${info.port}`);
 });
