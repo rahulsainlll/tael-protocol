@@ -39,6 +39,7 @@ function toPayment(row: PaymentRow): Payment {
     payer: row.payer,
     payee: row.payee,
     amount: row.amount,
+    fee: row.fee,
     status: row.status as Payment["status"],
     txHash: row.txHash,
     createdAt: row.createdAt.toISOString(),
@@ -58,6 +59,7 @@ export class DbPaymentRepository implements PaymentRepository {
         payer: payment.payer,
         payee: payment.payee,
         amount: payment.amount,
+        fee: payment.fee,
         status: payment.status,
         txHash: payment.txHash,
       })
