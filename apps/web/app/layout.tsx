@@ -26,10 +26,89 @@ const dot = DotGothic16({
   display: "swap",
 });
 
+const SITE_URL = "https://taelprotocol.xyz";
+const TITLE = "Tael — The payment layer for autonomous AI agents";
+const DESCRIPTION =
+  "Tael lets AI agents pay for any API, MCP tool, model, or dataset per call in USDC on Stellar — no accounts, no API keys, no billing setup.";
+
 export const metadata: Metadata = {
-  title: "Tael — The payment layer for autonomous AI agents",
-  description:
-    "Let AI agents pay for APIs, MCP tools, data, and digital services using USDC on Stellar.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: TITLE,
+    template: "%s — Tael",
+  },
+  description: DESCRIPTION,
+  applicationName: "Tael",
+  keywords: [
+    "Tael",
+    "Tael Protocol",
+    "taelprotocol",
+    "payment layer for AI agents",
+    "AI agent payments",
+    "agent payments",
+    "pay per call API",
+    "x402",
+    "HTTP 402",
+    "USDC",
+    "Stellar",
+    "MCP payments",
+    "machine payments",
+    "autonomous agents",
+  ],
+  authors: [{ name: "Tael", url: SITE_URL }],
+  creator: "Tael",
+  publisher: "Tael",
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "Tael",
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+    site: "@taelprotocol",
+    creator: "@taelprotocol",
+  },
+};
+
+/** Organization + WebSite structured data — helps Google attribute the brand
+ *  name "Tael" and can surface the docs/community as sitelinks. */
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "Tael",
+      alternateName: "Tael Protocol",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon.svg`,
+      description: DESCRIPTION,
+      sameAs: [
+        "https://x.com/taelprotocol",
+        "https://github.com/rahulsainlll/tael-protocol",
+        "https://discord.gg/tcb6b7ZYha",
+      ],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Tael",
+      description: DESCRIPTION,
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+  ],
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -40,6 +119,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${inter.variable} ${delicious.variable} ${dot.variable}`}
     >
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>
