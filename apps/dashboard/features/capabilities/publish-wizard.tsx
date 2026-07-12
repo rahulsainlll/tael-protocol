@@ -567,8 +567,7 @@ function StepIndicator({ step }: { step: Step }) {
     { key: "verify", label: "Verify", icon: Sparkles },
     { key: "done", label: "Publish", icon: Check },
   ];
-  const activeIndex =
-    step === "describe" ? 0 : step === "test" ? 1 : step === "verify" ? 2 : 3;
+  const activeIndex = step === "describe" ? 0 : step === "test" ? 1 : step === "verify" ? 2 : 3;
 
   return (
     <div className="flex items-center gap-2">

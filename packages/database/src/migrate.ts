@@ -16,17 +16,15 @@ async function main() {
   const client = postgres(url, { max: 1 });
   const db = drizzle(client);
 
-   
   console.log("Running migrations…");
   await migrate(db, { migrationsFolder: "./drizzle" });
-   
+
   console.log("Migrations complete.");
 
   await client.end();
 }
 
 main().catch((error) => {
-   
   console.error("Migration failed:", error);
   process.exit(1);
 });

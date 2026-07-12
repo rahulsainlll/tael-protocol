@@ -38,7 +38,13 @@ export function VerificationTimeline({ verified }: { verified: boolean }) {
       tone: "neutral",
       done: true,
     },
-    { label: "AI reviewed", subtitle: "Response checked", icon: Sparkles, tone: "blue", done: true },
+    {
+      label: "AI reviewed",
+      subtitle: "Response checked",
+      icon: Sparkles,
+      tone: "blue",
+      done: true,
+    },
     {
       label: "Verified",
       subtitle: verified ? "Live in marketplace" : "Pending",
@@ -61,7 +67,10 @@ export function VerificationTimeline({ verified }: { verified: boolean }) {
         {steps.map((step, i) => {
           const Icon = step.icon;
           return (
-            <div key={step.label} className="relative flex flex-col items-center gap-2.5 text-center">
+            <div
+              key={step.label}
+              className="relative flex flex-col items-center gap-2.5 text-center"
+            >
               {i < steps.length - 1 ? (
                 <span
                   className={cn(
@@ -78,12 +87,7 @@ export function VerificationTimeline({ verified }: { verified: boolean }) {
               >
                 <Icon className={cn("h-5 w-5", ICON[step.tone])} />
               </span>
-              <span
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-semibold",
-                  PILL[step.tone],
-                )}
-              >
+              <span className={cn("rounded-md px-2.5 py-1 text-xs font-semibold", PILL[step.tone])}>
                 {step.label}
               </span>
               <span className="text-xs text-muted-foreground">{step.subtitle}</span>

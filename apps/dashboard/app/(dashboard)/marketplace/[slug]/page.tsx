@@ -33,7 +33,12 @@ export default async function CapabilityDetailPage({
 
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-xl", meta.tile)}>
+        <div
+          className={cn(
+            "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl",
+            meta.tile,
+          )}
+        >
           <Icon className="h-6 w-6" />
         </div>
         <div className="min-w-0 flex-1 space-y-1">

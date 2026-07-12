@@ -94,7 +94,10 @@ export async function generateFaqQuestions(input: GenerateFaqInput): Promise<str
 
     const parsed = faqQuestionsSchema.safeParse(JSON.parse(extractText(response.content)));
     const questions = parsed.success
-      ? parsed.data.questions.map((q) => q.trim()).filter(Boolean).slice(0, 5)
+      ? parsed.data.questions
+          .map((q) => q.trim())
+          .filter(Boolean)
+          .slice(0, 5)
       : [];
     return questions.length >= 3 ? questions : fallbackQuestions(input.kind);
   } catch {
