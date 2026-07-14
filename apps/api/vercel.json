@@ -3,7 +3,7 @@
   "buildCommand": "cd ../.. && pnpm install --frozen-lockfile --prod=false && pnpm --filter @tael/api build",
   "outputDirectory": ".",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
