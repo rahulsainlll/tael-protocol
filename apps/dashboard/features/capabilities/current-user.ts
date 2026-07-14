@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { eq, users, type User } from "@tael/database";
 import { db } from "../../lib/db";
 import { getSession } from "../../lib/auth";
@@ -7,8 +8,12 @@ import { getSession } from "../../lib/auth";
  * Resolve the signed-in wallet to a `users` row, creating it on first use
  * (accounts are created lazily the first time a wallet does something that
  * needs persistence). Returns null when not authenticated.
+ *
+ * Wrapped in React `cache` so it runs at most once per request even when several
+ * server components/queries call it — one DB round-trip instead of N (the DB is
+ * remote, so each round-trip is expensive).
  */
-export async function getCurrentUser(): Promise<User | null> {
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const session = await getSession();
   if (!session) return null;
 
@@ -25,4 +30,4 @@ export async function getCurrentUser(): Promise<User | null> {
     .onConflictDoUpdate({ target: users.walletAddress, set: { updatedAt: new Date() } })
     .returning();
   return created ?? null;
-}
+});
