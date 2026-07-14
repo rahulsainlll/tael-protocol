@@ -83,10 +83,16 @@ async function main(): Promise<void> {
     "utf8",
   ).toString("base64");
 
+  // Match the capability's method (many are GET). Override with METHOD / BODY.
+  const method = (process.env.METHOD ?? "GET").toUpperCase();
+  const hasBody = method !== "GET" && method !== "HEAD";
   const paidRes = await fetch(`${GATEWAY_URL}/c/${slug}`, {
-    method: "POST",
-    headers: { "X-PAYMENT": header, "content-type": "application/json" },
-    body: "{}",
+    method,
+    headers: {
+      "X-PAYMENT": header,
+      ...(hasBody ? { "content-type": "application/json" } : {}),
+    },
+    body: hasBody ? (process.env.BODY ?? "{}") : undefined,
   });
 
   console.log("\nStatus:", paidRes.status);
