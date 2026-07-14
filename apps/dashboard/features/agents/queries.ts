@@ -61,20 +61,35 @@ export interface AgentOption {
   agentId: string;
   name: string;
   policy: SpendingPolicy | null;
+  /** Live on-chain USDC balance, so the picker can flag unfunded agents. */
+  usdc: string;
 }
 
 /**
- * Lean list of the user's agents for a picker (name + policy only, no live
- * balance calls — kept fast so it doesn't block the page).
+ * List the user's agents for the run picker, with each wallet's live USDC
+ * balance so the UI can flag ones that can't pay. Balance calls run in parallel.
  */
 export async function listAgentsForRun(): Promise<AgentOption[]> {
   const user = await getCurrentUser();
   if (!user) return [];
-  return db
-    .select({ agentId: agents.id, name: agents.name, policy: agents.policy })
+  const rows = await db
+    .select({
+      agentId: agents.id,
+      name: agents.name,
+      policy: agents.policy,
+      address: wallets.address,
+    })
     .from(agents)
+    .innerJoin(wallets, eq(agents.walletId, wallets.id))
     .where(eq(agents.ownerId, user.id))
     .orderBy(desc(agents.createdAt));
+
+  return Promise.all(
+    rows.map(async (r) => {
+      const { usdc } = await fetchUsdcBalance(r.address);
+      return { agentId: r.agentId, name: r.name, policy: r.policy, usdc };
+    }),
+  );
 }
 
 /** Fetch a single agent (ownership-checked) with its live wallet state. */
