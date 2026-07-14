@@ -1,5 +1,5 @@
 import "server-only";
-import { agents, desc, eq, wallets } from "@tael/database";
+import { agents, and, desc, eq, wallets } from "@tael/database";
 import type { SpendingPolicy } from "@tael/types";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "../capabilities/current-user";
@@ -55,4 +55,36 @@ export async function listAgentWallets(): Promise<AgentWallet[]> {
       };
     }),
   );
+}
+
+/** Fetch a single agent (ownership-checked) with its live wallet state. */
+export async function getAgentDetail(agentId: string): Promise<AgentWallet | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const [r] = await db
+    .select({
+      agentId: agents.id,
+      name: agents.name,
+      policy: agents.policy,
+      address: wallets.address,
+      createdAt: agents.createdAt,
+    })
+    .from(agents)
+    .innerJoin(wallets, eq(agents.walletId, wallets.id))
+    .where(and(eq(agents.id, agentId), eq(agents.ownerId, user.id)))
+    .limit(1);
+
+  if (!r) return null;
+  const { usdc, funded, ready } = await fetchUsdcBalance(r.address);
+  return {
+    agentId: r.agentId,
+    name: r.name,
+    address: r.address,
+    policy: r.policy,
+    usdc,
+    funded,
+    ready,
+    createdAt: r.createdAt,
+  };
 }

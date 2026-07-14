@@ -11,10 +11,13 @@ const STELLAR_NETWORK = process.env.STELLAR_NETWORK === "mainnet" ? "mainnet" : 
 const HORIZON_URL = process.env.STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
 const USDC_ISSUER = process.env.USDC_ISSUER ?? "";
 
+const nameSchema = z.string().trim().min(1, "Name is required").max(60);
+const amountSchema = z.string().regex(/^\d+(\.\d+)?$/, "Enter an amount, e.g. 0.10");
+
 const createAgentSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(60),
-  maxPerCall: z.string().regex(/^\d+(\.\d+)?$/, "Enter an amount, e.g. 0.10"),
-  dailyLimit: z.string().regex(/^\d+(\.\d+)?$/, "Enter an amount, e.g. 5.00"),
+  name: nameSchema,
+  maxPerCall: amountSchema,
+  dailyLimit: amountSchema,
 });
 
 export interface CreateAgentResult {
@@ -118,4 +121,59 @@ export async function provisionAgent(agentId: string): Promise<{ ok: boolean; er
 
   revalidatePath("/agents");
   return result.ok ? { ok: true } : { ok: false, error: result.error };
+}
+
+const updateAgentSchema = z.object({
+  name: nameSchema,
+  maxPerCall: amountSchema,
+  dailyLimit: amountSchema,
+});
+
+/** Update an agent's name and spending policy. Ownership-checked. */
+export async function updateAgent(
+  agentId: string,
+  input: { name: string; maxPerCall: string; dailyLimit: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const parsed = updateAgentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const { name, maxPerCall, dailyLimit } = parsed.data;
+
+  try {
+    await db
+      .update(agents)
+      .set({ name, policy: { maxPerCall, dailyLimit, blockedPublishers: [] } })
+      .where(and(eq(agents.id, agentId), eq(agents.ownerId, user.id)));
+  } catch (error) {
+    console.error("[agents] update failed:", error);
+    return { ok: false, error: "Could not save. Try again." };
+  }
+
+  revalidatePath("/agents");
+  revalidatePath(`/agents/${agentId}`);
+  return { ok: true };
+}
+
+/**
+ * Delete an agent the signed-in user owns. The wallet row (and its encrypted
+ * key) is left intact so any on-chain funds remain recoverable; only the agent
+ * binding is removed.
+ */
+export async function deleteAgent(agentId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  try {
+    await db.delete(agents).where(and(eq(agents.id, agentId), eq(agents.ownerId, user.id)));
+  } catch (error) {
+    console.error("[agents] delete failed:", error);
+    return { ok: false, error: "Could not delete. Try again." };
+  }
+
+  revalidatePath("/agents");
+  return { ok: true };
 }
