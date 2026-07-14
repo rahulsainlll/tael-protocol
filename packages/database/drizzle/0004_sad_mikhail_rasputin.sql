@@ -1,0 +1,1 @@
+ALTER TABLE "wallets" ADD COLUMN "secret_enc" text;
