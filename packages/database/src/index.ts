@@ -25,4 +25,5 @@ export {
   gte,
   lt,
   lte,
+  count,
 } from "drizzle-orm";

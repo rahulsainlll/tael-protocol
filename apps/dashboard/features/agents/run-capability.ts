@@ -14,6 +14,7 @@ import { Money } from "@tael/types";
 import { buildSignedPayment } from "@tael/stellar";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "../capabilities/current-user";
+import { fetchUsdcBalance } from "./balance";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const STELLAR_NETWORK = process.env.STELLAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
@@ -108,6 +109,15 @@ export async function runCapability(input: { agentId: string; slug: string }): P
     }
   }
 
+  // 3b. Make sure the wallet actually holds enough USDC (clear error, not a 500).
+  const { usdc } = await fetchUsdcBalance(agent.address);
+  if (Money.parse(total.toDecimalString()).isGreaterThan(Money.parse(usdc))) {
+    return {
+      ok: false,
+      error: `Not enough USDC. This agent has $${usdc}, the call costs $${total.toDecimalString()}. Fund it first.`,
+    };
+  }
+
   // 4. Sign the payment from the agent's hot wallet.
   let xPayment: string;
   try {
@@ -142,10 +152,19 @@ export async function runCapability(input: { agentId: string; slug: string }): P
     });
     const body = await res.text();
     if (!res.ok) {
-      return { ok: false, status: res.status, body, error: `Call failed (${res.status}).` };
+      return { ok: false, status: res.status, body, error: friendlyError(res.status) };
     }
     return { ok: true, status: res.status, body, paid: total.toDecimalString() };
   } catch {
-    return { ok: false, error: "The paid call failed." };
+    return { ok: false, error: "Couldn't reach the capability. Try again." };
   }
+}
+
+/** Map a gateway/upstream status to a message a human can act on. */
+function friendlyError(status: number): string {
+  if (status === 402) return "The payment was rejected. Check the agent's balance and trustline.";
+  if (status === 429) return "The API is rate-limiting requests right now. Try again in a moment.";
+  if (status === 404) return "This capability is no longer available.";
+  if (status >= 500) return "The agent couldn't pay, or the upstream API is down. Try again.";
+  return `The call failed (${status}).`;
 }

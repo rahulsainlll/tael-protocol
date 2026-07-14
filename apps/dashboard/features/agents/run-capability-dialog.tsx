@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Bot, Check, Play, Sparkles, TriangleAlert } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Bot, Check, Play, Search, Sparkles, TriangleAlert } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -9,15 +9,15 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Input,
 } from "@tael/ui";
 import { runCapability, type RunResult } from "./run-capability";
 import type { AgentOption } from "./queries";
 
 /**
- * Pay for a capability from one of your agents, from the UI. Picks an agent,
- * shows the price against its per-call cap, then signs + settles + calls in one
- * action. Motion follows the design rules: ease-out entrances, press feedback,
- * a fast step loader (perceived performance), tabular numbers.
+ * Pay for a capability from one of your agents, in the UI. Only agents that can
+ * actually pay (enough balance, within their per-call cap) are offered. Motion
+ * follows the design rules: ease-out entrances, press feedback, a fast loader.
  */
 export function RunCapabilityDialog({
   slug,
@@ -29,26 +29,42 @@ export function RunCapabilityDialog({
   agents: AgentOption[];
 }) {
   const [open, setOpen] = useState(false);
-  const [agentId, setAgentId] = useState(agents[0]?.agentId ?? "");
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<RunResult | null>(null);
+  const [query, setQuery] = useState("");
 
-  const selected = agents.find((a) => a.agentId === agentId);
   const priceNum = Number(price);
-  const overCap = selected?.policy ? priceNum > Number(selected.policy.maxPerCall) : false;
+
+  // Only agents that can actually pay for this call.
+  const eligible = useMemo(
+    () =>
+      agents.filter((a) => {
+        const funded = Number(a.usdc) >= priceNum;
+        const withinCap = a.policy ? priceNum <= Number(a.policy.maxPerCall) : true;
+        return funded && withinCap;
+      }),
+    [agents, priceNum],
+  );
+
+  const filtered = useMemo(
+    () => eligible.filter((a) => a.name.toLowerCase().includes(query.trim().toLowerCase())),
+    [eligible, query],
+  );
+
+  const [agentId, setAgentId] = useState("");
+  const selectedId = agentId || eligible[0]?.agentId || "";
 
   function reset() {
     setResult(null);
+    setQuery("");
   }
 
   function run() {
     setResult(null);
     startTransition(async () => {
-      setResult(await runCapability({ agentId, slug }));
+      setResult(await runCapability({ agentId: selectedId, slug }));
     });
   }
-
-  const hasAgents = agents.length > 0;
 
   return (
     <>
@@ -71,81 +87,94 @@ export function RunCapabilityDialog({
           <DialogHeader className="min-w-0">
             <DialogTitle>Run with an agent</DialogTitle>
             <DialogDescription>
-              Your agent pays {price ? `$${price}` : "the fee"} in USDC from its wallet and returns
-              the result. Nothing exceeds the caps you set.
+              Your agent pays ${price} in USDC from its wallet and returns the result. Nothing
+              exceeds the caps you set.
             </DialogDescription>
           </DialogHeader>
 
-          {!hasAgents ? (
+          {result?.ok ? (
+            <ResultView
+              result={result}
+              onAgain={() => setResult(null)}
+              onClose={() => setOpen(false)}
+            />
+          ) : eligible.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              You have no agents yet.{" "}
-              <a href="/agents" className="font-medium text-foreground hover:underline">
-                Create one
-              </a>{" "}
-              to run capabilities.
+              No agent can pay ${price} for this call.
+              <br />
+              <a
+                href="/agents"
+                className="mt-1 inline-block font-medium text-foreground hover:underline"
+              >
+                Fund an agent or raise its cap
+              </a>
             </div>
-          ) : result?.ok ? (
-            <ResultView result={result} onClose={() => setOpen(false)} />
           ) : (
             <div className="min-w-0 space-y-4">
-              {/* Agent picker */}
-              <div className="space-y-1.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Pay from
-                </span>
-                <div className="space-y-1.5">
-                  {agents.map((a) => (
+              {/* Search — only when there are enough agents to warrant it. */}
+              {eligible.length > 5 ? (
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search agents…"
+                    className="pl-9"
+                  />
+                </div>
+              ) : null}
+
+              {/* Agent list — compact + scrollable so it scales. */}
+              <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                {filtered.map((a) => {
+                  const active = a.agentId === selectedId;
+                  return (
                     <button
                       key={a.agentId}
                       type="button"
                       onClick={() => setAgentId(a.agentId)}
-                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-[border-color,background-color] duration-150 ${
-                        a.agentId === agentId
-                          ? "border-foreground/30 bg-muted/50"
-                          : "hover:bg-muted/30"
+                      className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-[border-color,background-color] duration-150 ${
+                        active ? "border-foreground/30 bg-muted/50" : "hover:bg-muted/30"
                       }`}
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
                         <Bot className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{a.name}</span>
+                        <span className="block truncate text-sm font-medium">{a.name}</span>
                         {a.policy ? (
                           <span className="block text-xs tabular-nums text-muted-foreground">
-                            max ${a.policy.maxPerCall}/call · ${a.policy.dailyLimit}/day
+                            max ${a.policy.maxPerCall}/call
                           </span>
                         ) : null}
                       </span>
-                      {a.agentId === agentId ? (
-                        <Check className="h-4 w-4 shrink-0 text-foreground" />
-                      ) : null}
+                      <span className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                        ${Number(a.usdc).toFixed(2)}
+                      </span>
+                      {active ? <Check className="h-4 w-4 shrink-0 text-foreground" /> : null}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
+                {filtered.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">No match.</p>
+                ) : null}
               </div>
 
-              {/* Price + policy check */}
               <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2.5 text-sm">
                 <span className="text-muted-foreground">This call costs</span>
                 <span className="font-semibold tabular-nums">${price} USDC</span>
               </div>
 
-              {overCap ? (
-                <p className="flex items-center gap-1.5 text-sm text-amber-600">
-                  <TriangleAlert className="h-4 w-4 shrink-0" /> Over this agent&apos;s per-call
-                  cap.
-                </p>
-              ) : null}
               {result?.error ? (
-                <p className="flex items-center gap-1.5 text-sm text-destructive">
-                  <TriangleAlert className="h-4 w-4 shrink-0" /> {result.error}
+                <p className="flex items-start gap-1.5 text-sm text-destructive">
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /> {result.error}
                 </p>
               ) : null}
 
               <Button
                 className="w-full transition-transform duration-100 ease-out active:scale-[0.99]"
                 onClick={run}
-                disabled={pending || !agentId || overCap}
+                disabled={pending || !selectedId}
               >
                 {pending ? <RunningLabel /> : <>Pay &amp; run</>}
               </Button>
@@ -167,7 +196,15 @@ function RunningLabel() {
   );
 }
 
-function ResultView({ result, onClose }: { result: RunResult; onClose: () => void }) {
+function ResultView({
+  result,
+  onAgain,
+  onClose,
+}: {
+  result: RunResult;
+  onAgain: () => void;
+  onClose: () => void;
+}) {
   let pretty = result.body ?? "";
   try {
     pretty = JSON.stringify(JSON.parse(result.body ?? ""), null, 2);
@@ -190,12 +227,27 @@ function ResultView({ result, onClose }: { result: RunResult; onClose: () => voi
         </pre>
       </div>
 
-      <Button
-        className="w-full transition-transform duration-100 ease-out active:scale-[0.99]"
-        onClick={onClose}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          className="flex-1 transition-transform duration-100 ease-out active:scale-[0.99]"
+          onClick={onAgain}
+        >
+          Run again
+        </Button>
+        <Button
+          className="flex-1 transition-transform duration-100 ease-out active:scale-[0.99]"
+          onClick={onClose}
+        >
+          Done
+        </Button>
+      </div>
+      <a
+        href="/payments"
+        className="block text-center text-xs text-muted-foreground hover:underline"
       >
-        Done
-      </Button>
+        See all calls in Payments
+      </a>
     </div>
   );
 }
