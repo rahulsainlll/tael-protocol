@@ -1,21 +1,31 @@
 import { Bot } from "lucide-react";
-import { Button } from "@tael/ui";
 import { EmptyState } from "../../../components/empty-state";
 import { PageHeader } from "../../../components/page-header";
+import { listAgentWallets } from "../../../features/agents/queries";
+import { AgentsList } from "../../../features/agents/agents-list";
+import { CreateAgentDialog } from "../../../features/agents/create-agent-dialog";
 
-export default function AgentsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AgentsPage() {
+  const agents = await listAgentWallets();
+
   return (
     <>
       <PageHeader
         title="My Agents"
         description="Create agents, fund them, and scope their spending."
-        action={<Button>New agent</Button>}
+        action={<CreateAgentDialog />}
       />
-      <EmptyState
-        icon={Bot}
-        title="No agents yet"
-        description="Create an agent wallet, set a spending policy, and let it purchase capabilities autonomously."
-      />
+      {agents.length === 0 ? (
+        <EmptyState
+          icon={Bot}
+          title="No agents yet"
+          description="Create an agent wallet, set a spending policy, and let it purchase capabilities autonomously."
+        />
+      ) : (
+        <AgentsList agents={agents} />
+      )}
     </>
   );
 }
