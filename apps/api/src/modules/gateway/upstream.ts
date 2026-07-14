@@ -1,8 +1,12 @@
 import { decryptSecret } from "@tael/database";
 import { type ServableCapability } from "../capabilities/capability.repository";
 
-/** How long we wait on the upstream before giving up. */
-const UPSTREAM_TIMEOUT_MS = 30_000;
+/**
+ * How long we wait on the upstream before giving up. Kept under the serverless
+ * function's max duration (Vercel) so the gateway returns a clean 502 rather than
+ * the platform killing the whole invocation.
+ */
+const UPSTREAM_TIMEOUT_MS = 25_000;
 
 /**
  * Basic SSRF guard: reject non-http(s) URLs and obviously-internal hosts. Mirrors
