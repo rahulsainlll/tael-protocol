@@ -56,7 +56,9 @@ export function UseCapabilityDialog({ endpoint, price }: { endpoint: string; pri
             </div>
 
             <a
-              href="/docs/accept-payments"
+              href="https://taelprotocol.xyz/docs/accept-payments"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:underline"
             >
               How x402 payments work <ExternalLink className="h-3.5 w-3.5" />
