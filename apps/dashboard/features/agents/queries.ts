@@ -57,6 +57,26 @@ export async function listAgentWallets(): Promise<AgentWallet[]> {
   );
 }
 
+export interface AgentOption {
+  agentId: string;
+  name: string;
+  policy: SpendingPolicy | null;
+}
+
+/**
+ * Lean list of the user's agents for a picker (name + policy only, no live
+ * balance calls — kept fast so it doesn't block the page).
+ */
+export async function listAgentsForRun(): Promise<AgentOption[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  return db
+    .select({ agentId: agents.id, name: agents.name, policy: agents.policy })
+    .from(agents)
+    .where(eq(agents.ownerId, user.id))
+    .orderBy(desc(agents.createdAt));
+}
+
 /** Fetch a single agent (ownership-checked) with its live wallet state. */
 export async function getAgentDetail(agentId: string): Promise<AgentWallet | null> {
   const user = await getCurrentUser();
