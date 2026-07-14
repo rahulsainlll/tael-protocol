@@ -13,6 +13,8 @@ export interface AgentWallet {
   /** Live on-chain USDC balance. */
   usdc: string;
   funded: boolean;
+  /** Has a USDC trustline, so it can receive USDC. */
+  ready: boolean;
   createdAt: Date;
 }
 
@@ -40,7 +42,7 @@ export async function listAgentWallets(): Promise<AgentWallet[]> {
 
   return Promise.all(
     rows.map(async (r) => {
-      const { usdc, funded } = await fetchUsdcBalance(r.address);
+      const { usdc, funded, ready } = await fetchUsdcBalance(r.address);
       return {
         agentId: r.agentId,
         name: r.name,
@@ -48,6 +50,7 @@ export async function listAgentWallets(): Promise<AgentWallet[]> {
         policy: r.policy,
         usdc,
         funded,
+        ready,
         createdAt: r.createdAt,
       };
     }),

@@ -25,6 +25,8 @@ export function CreateAgentDialog() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [address, setAddress] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [maxPerCall, setMaxPerCall] = useState("0.10");
@@ -33,6 +35,8 @@ export function CreateAgentDialog() {
   function reset() {
     setError(null);
     setAddress(null);
+    setReady(false);
+    setProvisionError(null);
     setName("");
     setMaxPerCall("0.10");
     setDailyLimit("5.00");
@@ -44,6 +48,8 @@ export function CreateAgentDialog() {
       const res = await createAgent({ name, maxPerCall, dailyLimit });
       if (res.ok && res.address) {
         setAddress(res.address);
+        setReady(Boolean(res.ready));
+        setProvisionError(res.provisionError ?? null);
         router.refresh();
       } else {
         setError(res.error ?? "Could not create the agent.");
@@ -63,7 +69,12 @@ export function CreateAgentDialog() {
       >
         <DialogContent className="max-w-md overflow-hidden">
           {address ? (
-            <FundStep address={address} onDone={() => setOpen(false)} />
+            <FundStep
+              address={address}
+              ready={ready}
+              provisionError={provisionError}
+              onDone={() => setOpen(false)}
+            />
           ) : (
             <>
               <DialogHeader className="min-w-0">
@@ -106,7 +117,17 @@ export function CreateAgentDialog() {
   );
 }
 
-function FundStep({ address, onDone }: { address: string; onDone: () => void }) {
+function FundStep({
+  address,
+  ready,
+  provisionError,
+  onDone,
+}: {
+  address: string;
+  ready: boolean;
+  provisionError: string | null;
+  onDone: () => void;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -127,7 +148,9 @@ function FundStep({ address, onDone }: { address: string; onDone: () => void }) 
         </div>
         <DialogTitle className="pt-2">Agent created</DialogTitle>
         <DialogDescription>
-          Fund this wallet with USDC (testnet for now). The agent pays from it, up to your cap.
+          {ready
+            ? "The wallet is ready. Send it USDC (testnet for now) and the agent pays from it, up to your cap."
+            : "The agent is created, but its wallet still needs provisioning before it can receive USDC. Retry it from the agent card."}
         </DialogDescription>
       </DialogHeader>
 
@@ -152,6 +175,8 @@ function FundStep({ address, onDone }: { address: string; onDone: () => void }) 
             <p className="break-all p-3 pr-10 font-mono text-sm">{address}</p>
           </div>
         </div>
+
+        {provisionError ? <p className="text-sm text-amber-600">{provisionError}</p> : null}
 
         <Button className="w-full" onClick={onDone}>
           Done
