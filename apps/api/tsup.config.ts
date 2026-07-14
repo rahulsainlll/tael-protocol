@@ -1,9 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  // index.ts = always-on Node server (local / Render); vercel.ts = serverless
-  // handler for Vercel functions. Both bundle @tael/* inline.
-  entry: ["src/index.ts", "src/vercel.ts"],
+  entry: ["src/index.ts"],
   format: ["esm"],
   platform: "node",
   target: "node22",
