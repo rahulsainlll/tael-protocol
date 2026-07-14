@@ -5,6 +5,8 @@ import { cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
 import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilities/kind-meta";
 import { UseCapabilityDialog } from "../../../../features/capabilities/use-capability-dialog";
+import { RunCapabilityDialog } from "../../../../features/agents/run-capability-dialog";
+import { listAgentsForRun } from "../../../../features/agents/queries";
 import { VerificationTimeline } from "../../../../features/capabilities/verification-timeline";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -20,6 +22,7 @@ export default async function CapabilityDetailPage({
   const capability = await getPublicCapabilityBySlug(slug);
   if (!capability) notFound();
 
+  const agentOptions = await listAgentsForRun();
   const verified = capability.status === "verified";
   const meta = kindMeta(capability.kind);
   const Icon = meta.icon;
@@ -51,10 +54,17 @@ export default async function CapabilityDetailPage({
             {verified ? <BadgeCheck className="h-5 w-5 text-emerald-600" /> : null}
           </h1>
         </div>
-        <UseCapabilityDialog
-          endpoint={`${API_URL}/c/${capability.slug}`}
-          price={`$${formatPrice(capability.price)}`}
-        />
+        <div className="flex items-center gap-2">
+          <RunCapabilityDialog
+            slug={capability.slug}
+            price={formatPrice(capability.price)}
+            agents={agentOptions}
+          />
+          <UseCapabilityDialog
+            endpoint={`${API_URL}/c/${capability.slug}`}
+            price={`$${formatPrice(capability.price)}`}
+          />
+        </div>
       </div>
 
       {/* Meta row */}
