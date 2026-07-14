@@ -1,31 +1,42 @@
-import { Bot } from "lucide-react";
+import Link from "next/link";
+import { Bot, ChevronRight } from "lucide-react";
 import type { AgentWallet } from "./queries";
 
 function truncate(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-6)}`;
 }
 
-/** A single agent card: name, hot-wallet balance, funding address, spending cap. */
 export function AgentsList({ agents }: { agents: AgentWallet[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {agents.map((a) => (
-        <div key={a.agentId} className="rounded-xl border p-5">
+        <Link
+          key={a.agentId}
+          href={`/agents/${a.agentId}`}
+          className="group rounded-xl border p-5 transition-colors hover:border-foreground/20 hover:bg-muted/30"
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                <Bot className="h-4.5 w-4.5" />
+                <Bot className="h-[18px] w-[18px]" />
               </span>
               <div>
                 <p className="font-medium leading-tight">{a.name}</p>
                 <p className="font-mono text-xs text-muted-foreground">{truncate(a.address)}</p>
               </div>
             </div>
-            {!a.funded ? (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
-                Unfunded
-              </span>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {a.ready ? (
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                  Ready
+                </span>
+              ) : (
+                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
+                  Not ready
+                </span>
+              )}
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </div>
           </div>
 
           <div className="mt-5 flex items-end justify-between">
@@ -48,7 +59,7 @@ export function AgentsList({ agents }: { agents: AgentWallet[] }) {
               </div>
             ) : null}
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );
