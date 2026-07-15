@@ -11,7 +11,7 @@ import {
   wallets,
 } from "@tael/database";
 import { Money } from "@tael/types";
-import { buildSignedPayment } from "@tael/stellar";
+import { buildSignedPayment, TAEL_MEMO } from "@tael/stellar";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "../capabilities/current-user";
 import { fetchUsdcBalance } from "./balance";
@@ -129,6 +129,7 @@ export async function runCapability(input: { agentId: string; slug: string }): P
       horizonUrl: HORIZON_URL,
       usdcIssuer: req.asset.issuer,
       legs,
+      memo: TAEL_MEMO,
     });
     xPayment = Buffer.from(
       JSON.stringify({

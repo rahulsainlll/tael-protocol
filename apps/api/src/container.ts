@@ -88,6 +88,10 @@ function createStellarVerifier(env: Env): PaymentVerifier {
         network,
         settledAt: new Date().toISOString(),
         payer: check.payer ?? receipt.payer,
+        // The builder's net share and asset, so a reader (e.g. an underwriter) can
+        // attribute this settlement's revenue straight from the receipt.
+        amount: requirements.maxAmountRequired,
+        asset: "USDC",
       };
     },
   };

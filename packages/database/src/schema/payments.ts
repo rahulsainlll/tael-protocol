@@ -1,4 +1,4 @@
-import { index, numeric, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { index, numeric, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { paymentStatus, primaryId, timestamps } from "./_shared";
 import { capabilities } from "./capabilities";
 import { agents } from "./agents";
@@ -35,6 +35,9 @@ export const payments = pgTable(
     index("payments_payer_idx").on(table.payer),
     index("payments_payee_idx").on(table.payee),
     index("payments_status_idx").on(table.status),
+    // Replay/double-count protection: a settled tx can be recorded at most once.
+    // Nulls are distinct in Postgres, so pending rows (txHash = null) are unaffected.
+    uniqueIndex("payments_tx_hash_unique").on(table.txHash),
   ],
 );
 

@@ -13,6 +13,10 @@ export interface SettlementReceipt {
   settledAt: string;
   /** The account that paid — the source of the settled transaction. */
   payer: string;
+  /** Amount received by the payee (the builder's net share), as a decimal string. */
+  amount: string;
+  /** Settled asset code, so a reader can attribute the revenue on-chain (USDC today). */
+  asset: string;
 }
 
 /**
@@ -53,7 +57,7 @@ export async function verifyPayment(
  */
 export function createMockVerifier(): PaymentVerifier {
   return {
-    verify(payload) {
+    verify(payload, requirements) {
       const network = paymentNetworkSchema.parse(payload.network);
       const hex = Buffer.from(payload.payload.transaction).toString("hex");
       return Promise.resolve({
@@ -61,6 +65,8 @@ export function createMockVerifier(): PaymentVerifier {
         network,
         settledAt: new Date().toISOString(),
         payer: `mock_payer_${hex.slice(0, 16)}`,
+        amount: requirements.maxAmountRequired,
+        asset: "USDC",
       });
     },
   };
