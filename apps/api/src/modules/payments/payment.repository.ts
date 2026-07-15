@@ -63,8 +63,12 @@ export class DbPaymentRepository implements PaymentRepository {
         status: payment.status,
         txHash: payment.txHash,
       })
+      // A duplicate txHash (a replayed settlement) inserts nothing — the payment
+      // is already on the ledger, so treat the write as idempotent instead of
+      // letting the unique constraint surface as a 500.
+      .onConflictDoNothing({ target: paymentsTable.txHash })
       .returning();
-    return toPayment(row!);
+    return row ? toPayment(row) : payment;
   }
 
   async findById(id: string): Promise<Payment | null> {

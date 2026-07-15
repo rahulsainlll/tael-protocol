@@ -3,10 +3,18 @@ import {
   BASE_FEE,
   Horizon,
   Keypair,
+  Memo,
   Operation,
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
 import { networkPassphrase, type StellarNetwork } from "./config";
+
+/**
+ * Marker attached to every Tael settlement as a Stellar text memo, so a payment
+ * is attributable to Tael from on-chain data alone. Kept short (Stellar text
+ * memos are capped at 28 bytes) and versioned by convention if it ever changes.
+ */
+export const TAEL_MEMO = "tael";
 
 /** One USDC payment leg the transaction must include. */
 export interface PaymentLeg {
@@ -28,6 +36,8 @@ export async function buildSignedPayment(args: {
   horizonUrl: string;
   usdcIssuer: string;
   legs: PaymentLeg[];
+  /** Optional Stellar text memo (max 28 bytes), e.g. {@link TAEL_MEMO}. */
+  memo?: string;
 }): Promise<string> {
   const signer = Keypair.fromSecret(args.secret);
   const server = new Horizon.Server(args.horizonUrl);
@@ -38,6 +48,9 @@ export async function buildSignedPayment(args: {
     fee: BASE_FEE,
     networkPassphrase: networkPassphrase(args.network),
   });
+  if (args.memo) {
+    builder.addMemo(Memo.text(args.memo));
+  }
   for (const leg of args.legs) {
     builder.addOperation(
       Operation.payment({ destination: leg.to, asset: usdc, amount: leg.amount }),
