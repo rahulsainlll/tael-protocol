@@ -1,495 +1,157 @@
 <div align="center">
 
-# Tael
+# ✦ Tael
 
-### The payment layer for autonomous AI agents.
+**The payment layer for autonomous AI agents**
 
-Let AI agents pay for APIs, MCP tools, data, and digital services using USDC on Stellar.
+Let AI agents pay for APIs, MCP tools, and data with **USDC on Stellar** —
+no cards, no accounts, no human in the loop.
+
+[Read the Docs](https://taelprotocol.xyz/docs) &nbsp;·&nbsp;
+[Live app](https://app.taelprotocol.xyz) &nbsp;·&nbsp;
+[Website](https://taelprotocol.xyz)
 
 </div>
 
----
-
-## Overview
-
-AI agents can reason, plan, write code, browse the web, and automate workflows.
-
-But they still can't do one important thing:
-
-> **Pay for the services they need.**
-
-Every paid API requires a credit card, an account, API keys, billing logic, subscriptions, or manual purchasing.
-
-Humans remain in the loop.
-
-**Tael changes that.**
-
-Tael is a programmable payment layer that enables autonomous AI agents to purchase APIs, MCP tools, datasets, and digital services using **USDC on Stellar**.
-
-Developers wrap any API with one SDK command and instantly monetize it.
-
-Agents discover tools, pay automatically within user-defined spending policies, and continue working without human intervention.
+<p align="center">
+  <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-000000.svg" /></a>
+  <a href="https://discord.gg/UtW9dZKwBW"><img alt="Discord community" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white" /></a>
+  <a href="https://x.com/taelprotocol"><img alt="Follow @taelprotocol" src="https://img.shields.io/badge/Follow-%40taelprotocol-000000?logo=x&logoColor=white" /></a>
+  <a href="https://stellar.org"><img alt="Built on Stellar" src="https://img.shields.io/badge/Built%20on-Stellar-000000?logo=stellar&logoColor=white" /></a>
+</p>
 
 ---
 
-# Why Tael?
+## What is Tael?
 
-Today's AI ecosystem has three major problems.
+Tael is a programmable payment layer that lets autonomous AI agents purchase APIs, MCP tools,
+datasets, and digital services using **USDC on Stellar**. Developers wrap any HTTP handler with one
+SDK call to monetize it; agents discover those capabilities, pay per request within user-defined
+spending policies, and keep working without a human in the loop.
 
-### AI agents cannot buy capabilities
+It speaks the open **x402 / HTTP 402** standard, so a paid endpoint is just a normal web request with
+a payment attached.
 
-When an agent needs company data, OCR, translation, search, weather, PDFs, or another premium service, it stops.
+## Why Tael?
 
-Someone has to manually subscribe or provide credentials.
+AI agents can reason, plan, and act — but they still can't pay for the services they need. Every paid
+API assumes a human with a credit card. Tael closes that gap.
 
----
+1. **Agents pay per call, not per subscription.** No accounts, no API-key juggling, no monthly plans.
+   An agent settles a micropayment for exactly what it uses, and continues.
 
-### Developers must build billing infrastructure
+2. **Developers monetize in one line.** Wrap an existing handler with `tael()` and get paid in USDC on
+   every call — no Stripe, no billing logic, no invoices, no customer accounts.
 
-Every API developer has to manage:
+3. **Spending stays under control.** Every agent runs on a funded hot wallet with on-chain caps
+   (max-per-call + rolling limits), so autonomy never means a blank cheque.
 
-- User accounts
-- Authentication
-- Billing
-- Stripe integration
-- Usage tracking
-- Invoicing
-- Payment failures
-
-This creates significant engineering overhead.
-
----
-
-### APIs are not designed for autonomous software
-
-Traditional billing assumes a human customer.
-
-AI agents need:
-
-- machine-native payments
-- instant settlement
-- micropayments
-- programmable spending limits
-
----
-
-# Solution
-
-Tael introduces a machine-native payment protocol.
-
-Instead of subscriptions, agents simply pay per request.
+## How it works
 
 ```
-Agent
-   │
-   ▼
-Calls Tool
-   │
-   ▼
-HTTP 402 Payment Required
-   │
-   ▼
-Agent signs payment
-   │
-   ▼
-USDC settles on Stellar
-   │
-   ▼
-Tool executes
-   │
-   ▼
-Response returned
+Agent calls a capability
+        │
+        ▼
+HTTP 402 Payment Required   ← the gateway returns a payment challenge
+        │
+        ▼
+Agent signs a USDC payment  ← within its spending policy
+        │
+        ▼
+Settles on Stellar          ← verified on-chain before anything runs
+        │
+        ▼
+Handler executes → response + signed receipt
 ```
 
-Every request becomes:
+Payment is verified on-chain **before** your handler runs, and a signed `X-PAYMENT-RESPONSE` receipt is
+returned with the response. Settlement is non-custodial: the agent pays the builder and a 1% protocol
+fee in a single transaction.
 
-```
-Request
-→ Payment
-→ Verification
-→ Execution
-```
+## Getting started
 
----
+### Monetize an API — for developers
 
-# Features
-
-## For AI Agents
-
-- Autonomous purchases
-- Pay-per-call APIs
-- Smart spending policies
-- Passkey-secured wallets
-- USDC only
-- No gas tokens
-- Micropayment support
-- Automatic retries
-- Transparent receipts
-
----
-
-## For Developers
-
-Wrap existing APIs in one command.
+Wrap any Fetch handler in one call. Because it speaks the Web `Request`/`Response` standard, it drops
+into Hono, Next.js route handlers, Bun, Deno, and Cloudflare Workers unchanged.
 
 ```ts
 import { tael } from "@tael/sdk";
 
+// Every call now requires a $0.02 USDC payment before `myApi` runs.
 export default tael({
   price: "0.02",
   handler: myApi,
 });
 ```
 
-That's it.
-
-No billing.
-
-No Stripe.
-
-No customer accounts.
-
-No invoices.
-
-Just get paid every time your API is called.
-
----
-
-## For MCP Servers
-
-Existing MCP servers can be wrapped without modification.
-
-```
-Claude
-    │
-    ▼
-Tael MCP Wrapper
-    │
-    ▼
-Payment Verification
-    │
-    ▼
-Existing MCP Server
-```
-
----
-
-# User Experience
-
-## User
-
-1. Create an agent wallet
-2. Fund it with USDC
-3. Set spending rules
-4. Ask the agent to perform a task
-5. Receive results and spending summary
-
-Example:
-
-```
-Find the five best suppliers
-for this product and write
-a report.
-```
-
-Agent automatically purchases:
-
-- Business records
-- Live pricing
-- PDF parsing
-- Translation
-
-Total:
-
-```
-Spent:
-$0.71
-
-Remaining:
-$19.29
-```
-
----
-
-## Developer
-
-1. Connect API
-2. Set pricing
-3. Add Stellar wallet
-4. Publish
-
-Every successful request instantly pays:
-
-```
-Agent Wallet
-      │
-      ▼
-Developer Wallet
-```
-
-No subscriptions.
-
-No payouts.
-
-No waiting.
-
----
-
-# Architecture
-
-```
-                    +-----------------------+
-                    |      User Wallet      |
-                    |  Passkeys + Policies  |
-                    +-----------+-----------+
-                                |
-                                |
-                                ▼
-                    +-----------------------+
-                    |     AI Agent Client   |
-                    +-----------+-----------+
-                                |
-                                |
-                     Calls Paid Tool
-                                |
-                                ▼
-                    +-----------------------+
-                    |   Tael SDK Wrapper    |
-                    +-----------+-----------+
-                                |
-                  HTTP 402 Payment Required
-                                |
-                                ▼
-                  +--------------------------+
-                  |  x402 Payment Verification|
-                  +------------+-------------+
-                               |
-                      Stellar Settlement
-                               |
-                               ▼
-                 Developer receives USDC
-                               |
-                               ▼
-                      Tool executes request
-```
-
----
-
-# Technology Stack
-
-## Blockchain
-
-- Stellar
-- Soroban
-- USDC
-- Sponsored Transactions
-
----
-
-## Payments
-
-- Coinbase x402
-- Micropayment Protocol (MPP)
-
----
-
-## Backend
-
-- TypeScript
-- Node.js
-- Supabase
-- PostgreSQL
-
----
-
-## Frontend
-
-- Next.js
-- React
-- Tailwind CSS
-
----
-
-## Authentication
-
-- WebAuthn
-- Passkeys
-- Smart Accounts
-
----
-
-# Why Stellar?
-
-Tael depends on extremely cheap transactions.
-
-Stellar provides:
-
-- Near-zero fees
-- Fast finality
-- Native USDC
-- Sponsored transactions
-- Excellent micropayment economics
-
-Agents never need to own XLM.
-
-They only spend USDC.
-
----
-
-# Security
-
-Tael is non-custodial.
-
-Funds always move directly between:
-
-```
-Agent Wallet
-      │
-      ▼
-Developer Wallet
-```
-
-Tael never holds user funds.
-
-Each agent receives a scoped signer that can only spend within the limits defined by the wallet owner.
-
-Example policy:
-
-```
-Maximum per call:
-$0.50
-
-Daily budget:
-$5
-
-Allowed categories:
-✓ Research
-✓ Data
-✓ OCR
-
-Blocked:
-
-✗ Gambling
-✗ Unknown merchants
-```
-
-Even if an agent becomes compromised, it cannot exceed its on-chain policy.
-
----
-
-# Roadmap
-
-> **Build status:** the monorepo foundation is in place — SDK, x402, Stellar settlement, the HTTP API,
-> the marketing site, and the product **dashboard + shared UI** are all scaffolded and passing
-> `lint · typecheck · test · build`. See [`claude/roadmap.md`](./claude/roadmap.md) for the detailed
-> engineering roadmap and current status.
-
-## Phase 1 — Foundation ✅
-
-- SDK ✅
-- x402 integration ✅
-- Wallet & settlement ✅ _(Stellar primitives; Soroban smart wallet later)_
-- HTTP API ✅
-
----
-
-## Phase 2 — Product surface ✅
-
-- Dashboard ✅
-- Shared UI (`@tael/ui`) ✅
-- Marketplace _(UI scaffolded; live listings next)_
-- Revenue analytics _(UI scaffolded; live data next)_
-
----
-
-## Phase 3 — Real flows & beyond
-
-- Database + auth (Drizzle, Better Auth + passkeys)
-- MCP wrapper & agent client
-- Agent directory, discovery, MPP sessions
-- Soroban contracts, mainnet
-
----
-
-# Vision
-
-The internet was built for humans.
-
-The next internet will be built for autonomous software.
-
-Just as Stripe became the payment infrastructure for online businesses, Tael is building the payment infrastructure for AI agents.
-
-We envision a future where millions of autonomous agents discover, purchase, and use digital services without requiring human intervention.
-
-Developers publish tools.
-
-Agents buy capabilities.
-
-Software pays software.
-
-Tael makes it possible.
-
----
-
-# Repository
-
-Tael is a Turborepo + pnpm monorepo.
-
-```text
-apps/
-  api/          # Backend API — Hono + tRPC modular monolith (@tael/api)
-  web/          # Marketing site — Next.js 15
-  dashboard/    # Product dashboard — Next.js 15 (wallets, marketplace, agents…)
-packages/
-  config/       # Shared tsconfig / eslint / prettier / tailwind presets
-  types/        # Shared domain kernel — value objects, zod schemas, errors
-  payments/     # x402 / HTTP-402 payment protocol
-  stellar/      # USDC settlement primitives (Soroban-ready)
-  sdk/          # @tael/sdk — the tael({ price, handler }) wrapper
-  ui/           # @tael/ui — shared React components (shadcn/ui)
-```
-
-**Project docs**
-
-- **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — the full technical design: folder rationale, package
-  boundaries, dependency graph, DDD conventions, CI/CD, release workflow.
-- **[`CONTRIBUTING.md`](./CONTRIBUTING.md)** — local setup, workflow, and conventions.
-
-## Local development
-
-Requires Node ≥ 22 and pnpm ≥ 11 (`corepack enable`).
+That's it — no billing, no Stripe, no customer accounts. Just get paid every time your API is called.
+
+### Buy a capability — for agents
+
+From the [dashboard](https://app.taelprotocol.xyz): create an agent, fund its hot wallet with USDC,
+and set a spending policy (max-per-call + a rolling limit). The agent then discovers capabilities in
+the marketplace and pays for them autonomously — each call settles on-chain, within the caps you set,
+and shows up in your ledger.
+
+## Packages
+
+A Turborepo + pnpm monorepo. The payment engine is chain-agnostic; Stellar is the first settlement
+backend.
+
+| Package          | What it does                                                    |
+| ---------------- | --------------------------------------------------------------- |
+| `@tael/sdk`      | Wrap any handler with x402 payments — `tael()` / `createTael()` |
+| `@tael/payments` | x402 protocol wire format + non-custodial fee split             |
+| `@tael/stellar`  | Stellar settlement + the hardened on-chain payment verifier     |
+| `@tael/types`    | `Money` value object, zod schemas, shared errors                |
+| `@tael/auth`     | Sign-In-With-Stellar sessions (edge-safe, `jose`)               |
+| `@tael/database` | Drizzle schema + AES-256-GCM secret encryption                  |
+| `@tael/ui`       | Shared React components (shadcn/ui-based)                       |
+| `@tael/config`   | Shared TypeScript / Tailwind / ESLint config                    |
+| `@tael/claude`   | AI helpers (e.g. capability FAQ generation)                     |
+
+Apps: **`web`** (marketing site), **`dashboard`** (the console), **`api`** (the capability gateway).
+
+## Build and run from source
 
 ```bash
+git clone https://github.com/rahulsainlll/tael-protocol.git
+cd tael-protocol
 pnpm install
-cp .env.example .env
-pnpm dev                       # run everything in watch mode
-
-pnpm --filter @tael/api dev    # or just the API       → http://localhost:3001/health
-pnpm --filter web dev          # or just the site      → http://localhost:3000
-pnpm --filter dashboard dev    # or just the dashboard → http://localhost:3002
+cp .env.example .env   # add your keys (Stellar, database, auth secret)
+pnpm dev               # runs the web, dashboard, and api in parallel
 ```
 
-Quality gates (same as CI): `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+Useful scripts:
 
----
+```bash
+pnpm build         # build every app and package
+pnpm test          # run the test suites
+pnpm typecheck     # type-check the whole monorepo
+pnpm format        # format with Prettier
+```
 
-# Contributing
+## Documentation
 
-We welcome contributions from developers building the future of autonomous commerce. Start with
-**[CONTRIBUTING.md](./CONTRIBUTING.md)**.
+Full docs live at **[taelprotocol.xyz/docs](https://taelprotocol.xyz/docs)** — the SDK, accepting
+payments, spending policies, and the gateway.
 
----
+## Community
 
-# License
+- **Discord** — [join the community](https://discord.gg/UtW9dZKwBW)
+- **X** — [@taelprotocol](https://x.com/taelprotocol)
+- **Docs** — [taelprotocol.xyz/docs](https://taelprotocol.xyz/docs)
 
-MIT
+## Contributing
 
----
+> [!NOTE]
+> We value contributions. For questions or support, join our
+> [Discord community](https://discord.gg/UtW9dZKwBW).
 
-<div align="center">
+Bug fixes and small improvements are the best way to get started. For larger features, please open an
+issue or reach out on Discord first so we can make sure it aligns with the roadmap.
 
-**Built with ❤️ on Stellar**
+## License
 
-Making AI agents economically autonomous.
-
-</div>
+Licensed under the [MIT License](./LICENSE).
