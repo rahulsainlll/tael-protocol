@@ -27,12 +27,20 @@ export async function provisionHotWallet(args: {
   horizonUrl: string;
   usdcIssuer: string;
 }): Promise<ProvisionResult> {
-  const keypair = Keypair.fromSecret(args.secret);
-  const server = new Horizon.Server(args.horizonUrl);
-  const passphrase = networkPassphrase(args.network);
-  const usdc = usdcAsset(args.usdcIssuer);
+  // A missing issuer would make `usdcAsset` throw ("Issuer cannot be null"); catch
+  // it here with a clear message rather than letting it escape as a 500.
+  if (!args.usdcIssuer) {
+    return { ok: false, ready: false, error: "USDC issuer is not configured (set USDC_ISSUER)." };
+  }
 
   try {
+    // Setup lives inside the try so a bad secret/issuer/network can never throw
+    // out of this function — provisioning always resolves to a ProvisionResult.
+    const keypair = Keypair.fromSecret(args.secret);
+    const server = new Horizon.Server(args.horizonUrl);
+    const passphrase = networkPassphrase(args.network);
+    const usdc = usdcAsset(args.usdcIssuer);
+
     // 1. Ensure the account exists on-chain (needs XLM). Testnet-only via friendbot.
     let account = await loadAccount(server, keypair.publicKey());
     if (!account) {
