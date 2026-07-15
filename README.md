@@ -4,8 +4,9 @@
 
 **The payment layer for autonomous AI agents**
 
-Let AI agents pay for APIs, MCP tools, and data with **USDC on Stellar** —
-no cards, no accounts, no human in the loop.
+**Pay for any API. Get paid for yours.**
+
+Agents, MCP tools, and APIs supported. Payments settled in USDC on Stellar.
 
 [Read the Docs](https://taelprotocol.xyz/docs) &nbsp;·&nbsp;
 [Live app](https://app.taelprotocol.xyz) &nbsp;·&nbsp;
