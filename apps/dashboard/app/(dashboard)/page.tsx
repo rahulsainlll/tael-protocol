@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Activity, ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Bot, Boxes } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Bot, Boxes, Store, Wallet } from "lucide-react";
 import { PageHeader } from "../../components/page-header";
-import { StatCard } from "../../components/stat-card";
 import { getPaymentsData } from "../../features/payments/queries";
 import { getOverviewCounts } from "../../features/overview/queries";
+import { QuickAction, type QuickActionProps } from "../../features/overview/quick-action";
+import { GettingStarted, type SetupStep } from "../../features/overview/getting-started";
 
 export const dynamic = "force-dynamic";
 
@@ -27,41 +28,96 @@ function timeAgo(d: Date): string {
   return "just now";
 }
 
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 export default async function OverviewPage() {
-  const [{ earned, spent, activity }, counts] = await Promise.all([
-    getPaymentsData(),
-    getOverviewCounts(),
-  ]);
+  const [{ spent, activity }, counts] = await Promise.all([getPaymentsData(), getOverviewCounts()]);
+
+  const hasAgents = counts.agents > 0;
+  const hasCapabilities = counts.capabilities > 0;
+  const hasSpent = Number(spent) > 0;
+
+  // Real progress through the core loop. Step 1 is done the moment you're here.
+  const steps: SetupStep[] = [
+    {
+      label: "Connect your wallet",
+      hint: "Your Stellar wallet is your identity.",
+      done: true,
+      href: "/wallet",
+      cta: "Open",
+    },
+    {
+      label: "Create an agent",
+      hint: "A funded hot wallet that pays per call, within limits you set.",
+      done: hasAgents,
+      href: "/agents",
+      cta: "Create agent",
+    },
+    {
+      label: "Run your first capability",
+      hint: "Pay for an API from your agent and settle it on-chain.",
+      done: hasSpent,
+      href: "/marketplace",
+      cta: "Browse",
+    },
+    {
+      label: "Publish a capability to earn",
+      hint: "Put an API behind a paywall and get paid per call.",
+      done: hasCapabilities,
+      href: "/capabilities",
+      cta: "Publish",
+    },
+  ];
+  const setupComplete = steps.every((s) => s.done);
+
+  const actions: QuickActionProps[] = [
+    {
+      href: "/marketplace",
+      icon: Store,
+      title: "Browse marketplace",
+      subtitle: "Find a capability to use",
+    },
+    {
+      href: "/agents",
+      icon: Bot,
+      title: "My Agents",
+      subtitle: hasAgents
+        ? `Manage ${plural(counts.agents, "agent", "agents")}`
+        : "Create a funded agent",
+    },
+    {
+      href: "/capabilities",
+      icon: Boxes,
+      title: "My Capabilities",
+      subtitle: hasCapabilities
+        ? `Manage ${plural(counts.capabilities, "capability", "capabilities")}`
+        : "Publish an API to earn",
+    },
+    {
+      href: "/wallet",
+      icon: Wallet,
+      title: "Wallet",
+      subtitle: "Fund agents and set limits",
+    },
+  ];
 
   return (
     <>
-      <PageHeader title="Overview" description="Your earnings, spend, and activity at a glance." />
+      <PageHeader title="Overview" description="Everything you can do with Tael, in one place." />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Earned"
-          value={`$${usd(earned)}`}
-          hint="USDC, all-time"
-          icon={ArrowDownLeft}
-        />
-        <StatCard
-          label="Spent"
-          value={`$${usd(spent)}`}
-          hint="By your agents"
-          icon={ArrowLeftRight}
-        />
-        <StatCard
-          label="Agents"
-          value={String(counts.agents)}
-          hint={counts.agents === 0 ? "Create your first agent" : "Funded, capped wallets"}
-          icon={Bot}
-        />
-        <StatCard
-          label="Capabilities"
-          value={String(counts.capabilities)}
-          hint={counts.capabilities === 0 ? "Publish to start earning" : "Published by you"}
-          icon={Boxes}
-        />
+      {setupComplete ? null : <GettingStarted steps={steps} />}
+
+      <section className="space-y-3">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Quick actions
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {actions.map((a) => (
+            <QuickAction key={a.href} {...a} />
+          ))}
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -77,17 +133,13 @@ export default async function OverviewPage() {
         </div>
 
         {activity.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center">
-            <Activity className="h-6 w-6 text-muted-foreground" />
-            <p className="text-sm font-medium">No activity yet</p>
-            <p className="max-w-xs text-sm text-muted-foreground">
-              Payments appear here once your agents start transacting or someone uses your
-              capabilities.
-            </p>
-          </div>
+          <p className="rounded-xl border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+            No payments yet. Once your agents transact or someone uses your capabilities, it shows
+            up here.
+          </p>
         ) : (
           <div className="divide-y rounded-xl border">
-            {activity.slice(0, 6).map((row) => {
+            {activity.slice(0, 3).map((row) => {
               const inbound = row.direction === "earned";
               return (
                 <div key={row.id} className="flex items-center gap-3 px-4 py-3">
