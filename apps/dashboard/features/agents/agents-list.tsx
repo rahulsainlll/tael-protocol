@@ -13,7 +13,7 @@ export function AgentsList({ agents }: { agents: AgentWallet[] }) {
         <Link
           key={a.agentId}
           href={`/agents/${a.agentId}`}
-          className="group rounded-xl border p-5 transition-colors hover:border-foreground/20 hover:bg-muted/30"
+          className="group rounded-xl border p-5 transition-[border-color,background-color,box-shadow,transform] duration-150 ease-out hover:border-foreground/20 hover:bg-muted/30 hover:shadow-sm active:scale-[0.99]"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">

@@ -9,7 +9,7 @@ export function CapabilityCard({ capability }: { capability: MarketplaceItem }) 
   const Icon = meta.icon;
   return (
     <Link href={`/marketplace/${capability.slug}`} className="group block">
-      <Card className="flex h-full flex-col transition-colors group-hover:border-foreground/20">
+      <Card className="flex h-full flex-col transition-[border-color,box-shadow,transform] duration-150 ease-out group-hover:border-foreground/20 group-hover:shadow-sm group-active:scale-[0.99]">
         <CardHeader className="gap-2">
           <div className="flex items-center justify-between gap-2">
             <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg", meta.tile)}>
@@ -36,8 +36,10 @@ export function CapabilityCard({ capability }: { capability: MarketplaceItem }) 
         </CardHeader>
         <CardContent className="mt-auto">
           <div className="flex items-center justify-between border-t pt-3">
-            <span className="font-mono text-xs text-muted-foreground">/{capability.slug}</span>
-            <span className="text-sm font-semibold">
+            <span className="truncate font-mono text-xs text-muted-foreground">
+              /{capability.slug}
+            </span>
+            <span className="shrink-0 text-sm font-semibold tabular-nums">
               ${formatPrice(capability.price)}
               <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
             </span>
