@@ -78,13 +78,20 @@ export async function createAgent(input: {
 
   // Provision the wallet so it can actually receive USDC (fund XLM + add the
   // trustline). If this fails, the agent still exists — it's retryable from the
-  // card, so we surface the error rather than failing the whole create.
-  const provision = await provisionHotWallet({
-    secret: keypair.secret,
-    network: STELLAR_NETWORK,
-    horizonUrl: HORIZON_URL,
-    usdcIssuer: USDC_ISSUER,
-  });
+  // card, so we surface the error rather than failing the whole create. Wrapped
+  // defensively so a provisioning fault can never crash the create action.
+  let provision: { ok: boolean; ready: boolean; error?: string };
+  try {
+    provision = await provisionHotWallet({
+      secret: keypair.secret,
+      network: STELLAR_NETWORK,
+      horizonUrl: HORIZON_URL,
+      usdcIssuer: USDC_ISSUER,
+    });
+  } catch (error) {
+    console.error("[agents] provision threw:", error);
+    provision = { ok: false, ready: false, error: "Provisioning failed. Retry from the agent." };
+  }
 
   revalidatePath("/agents");
   return {
