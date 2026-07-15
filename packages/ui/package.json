@@ -16,6 +16,7 @@
   "dependencies": {
     "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-slot": "catalog:",
+    "@radix-ui/react-tooltip": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
