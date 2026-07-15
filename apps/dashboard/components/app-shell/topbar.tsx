@@ -1,28 +1,11 @@
-import { getSession } from "../../lib/auth";
-import { LogoutButton } from "./logout-button";
+import { SidebarTrigger } from "@tael/ui";
 import { ThemeToggle } from "./theme-toggle";
 
-function truncateAddress(address: string): string {
-  return address.length > 12 ? `${address.slice(0, 4)}…${address.slice(-4)}` : address;
-}
-
-export async function Topbar() {
-  const session = await getSession();
-
+export function Topbar() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-end gap-3 border-b bg-background/80 px-6 backdrop-blur">
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-background/80 px-4 backdrop-blur sm:px-6">
+      <SidebarTrigger />
       <ThemeToggle />
-      {session ? (
-        <div className="flex items-center gap-3">
-          <span
-            title={session.address}
-            className="hidden font-mono text-sm text-muted-foreground sm:inline"
-          >
-            {truncateAddress(session.address)}
-          </span>
-          <LogoutButton />
-        </div>
-      ) : null}
     </header>
   );
 }
