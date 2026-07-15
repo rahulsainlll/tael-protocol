@@ -7,6 +7,7 @@ import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilitie
 import { UseCapabilityDialog } from "../../../../features/capabilities/use-capability-dialog";
 import { RunCapabilityDialog } from "../../../../features/agents/run-capability-dialog";
 import { listAgentsForRun } from "../../../../features/agents/queries";
+import { ReviewsSection } from "../../../../features/reviews/reviews-section";
 import { VerificationTimeline } from "../../../../features/capabilities/verification-timeline";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -177,6 +178,9 @@ export default async function CapabilityDetailPage({
           </div>
         </section>
       ) : null}
+
+      {/* Reviews */}
+      <ReviewsSection capabilityId={capability.id} slug={capability.slug} />
     </div>
   );
 }
