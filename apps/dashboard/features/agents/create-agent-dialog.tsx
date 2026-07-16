@@ -13,6 +13,7 @@ import {
   Input,
 } from "@tael/ui";
 import { createAgent } from "./actions";
+import { CardVisual } from "./card-visual";
 
 /**
  * Create an agent with a fresh hot wallet. Two steps: (1) name + spending caps,
@@ -59,7 +60,7 @@ export function CreateAgentDialog() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>New agent</Button>
+      <Button onClick={() => setOpen(true)}>New card</Button>
       <Dialog
         open={open}
         onOpenChange={(o) => {
@@ -78,19 +79,21 @@ export function CreateAgentDialog() {
           ) : (
             <>
               <DialogHeader className="min-w-0">
-                <DialogTitle>New agent</DialogTitle>
+                <DialogTitle>New card</DialogTitle>
                 <DialogDescription>
-                  Tael creates a wallet the agent pays from. You fund it and set a spending cap it
-                  cannot exceed.
+                  A card is a hot wallet your agents pay from, within limits you set.
                 </DialogDescription>
               </DialogHeader>
+
+              {/* Live preview: fills in as you type below. */}
+              <CardVisual name={name} policy={{ maxPerCall, dailyLimit }} preview />
 
               <div className="min-w-0 space-y-4">
                 <Field label="Name">
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Research agent"
+                    placeholder="Production card"
                     autoFocus
                   />
                 </Field>
@@ -106,7 +109,7 @@ export function CreateAgentDialog() {
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
                 <Button className="w-full" onClick={submit} disabled={pending || !name.trim()}>
-                  {pending ? "Creating…" : "Create agent wallet"}
+                  {pending ? "Creating…" : "Create card"}
                 </Button>
               </div>
             </>
@@ -146,11 +149,11 @@ function FundStep({
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/10">
           <Wallet className="h-5 w-5 text-emerald-600" />
         </div>
-        <DialogTitle className="pt-2">Agent created</DialogTitle>
+        <DialogTitle className="pt-2">Card created</DialogTitle>
         <DialogDescription>
           {ready
-            ? "The wallet is ready. Send it USDC (testnet for now) and the agent pays from it, up to your cap."
-            : "The agent is created, but its wallet still needs provisioning before it can receive USDC. Retry it from the agent card."}
+            ? "The card is ready. Send it USDC (testnet for now) and your agents pay from it, up to your cap."
+            : "The card is created, but it still needs provisioning before it can receive USDC. Retry it from the card."}
         </DialogDescription>
       </DialogHeader>
 

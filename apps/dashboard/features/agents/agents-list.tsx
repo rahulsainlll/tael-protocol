@@ -1,64 +1,24 @@
 import Link from "next/link";
-import { Bot, ChevronRight } from "lucide-react";
 import type { AgentWallet } from "./queries";
-
-function truncate(addr: string): string {
-  return `${addr.slice(0, 6)}…${addr.slice(-6)}`;
-}
+import { CardVisual } from "./card-visual";
 
 export function AgentsList({ agents }: { agents: AgentWallet[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
       {agents.map((a) => (
         <Link
           key={a.agentId}
           href={`/agents/${a.agentId}`}
-          className="group rounded-xl border p-5 transition-[border-color,background-color,box-shadow,transform] duration-150 ease-out hover:border-foreground/20 hover:bg-muted/30 hover:shadow-sm active:scale-[0.99]"
+          aria-label={a.name}
+          className="block rounded-2xl outline-none transition-transform duration-150 ease-out hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                <Bot className="h-[18px] w-[18px]" />
-              </span>
-              <div>
-                <p className="font-medium leading-tight">{a.name}</p>
-                <p className="font-mono text-xs text-muted-foreground">{truncate(a.address)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {a.ready ? (
-                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                  Ready
-                </span>
-              ) : (
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
-                  Not ready
-                </span>
-              )}
-              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-end justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Balance</p>
-              <p className="mt-0.5 text-xl font-semibold tabular-nums">
-                ${Number(a.usdc).toFixed(2)}{" "}
-                <span className="text-sm font-normal text-muted-foreground">USDC</span>
-              </p>
-            </div>
-            {a.policy ? (
-              <div className="text-right text-xs text-muted-foreground">
-                <p>
-                  max <span className="tabular-nums text-foreground">${a.policy.maxPerCall}</span>
-                  /call
-                </p>
-                <p>
-                  <span className="tabular-nums text-foreground">${a.policy.dailyLimit}</span>/day
-                </p>
-              </div>
-            ) : null}
-          </div>
+          <CardVisual
+            name={a.name}
+            address={a.address}
+            usdc={a.usdc}
+            policy={a.policy}
+            ready={a.ready}
+          />
         </Link>
       ))}
     </div>

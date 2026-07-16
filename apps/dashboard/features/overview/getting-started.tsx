@@ -26,7 +26,7 @@ export function GettingStarted({ steps }: { steps: SetupStep[] }) {
       <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
         <div className="space-y-1">
           <CardTitle className="text-base">Get started</CardTitle>
-          <CardDescription>A few steps to your first agent payment.</CardDescription>
+          <CardDescription>A few steps to your first card payment.</CardDescription>
         </div>
         <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
           {done} of {steps.length}

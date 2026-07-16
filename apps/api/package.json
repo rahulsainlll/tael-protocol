@@ -8,6 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "testnet:setup": "tsx src/scripts/testnet-setup.ts",
+    "testnet:mint": "tsx src/scripts/testnet-mint.ts",
     "pay:testnet": "tsx src/scripts/testnet-pay.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
