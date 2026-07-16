@@ -1,12 +1,12 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import {
   and,
   capabilities,
   encryptSecret,
   eq,
+  ilike,
   type CapabilityFaq,
   type CapabilitySpec,
 } from "@tael/database";
@@ -71,6 +71,24 @@ export async function generateQuestions(input: {
 }
 
 /**
+ * Turn a base slug into a unique one, keeping the clean name the publisher chose.
+ * Returns `cat-facts` when free; only falls back to `cat-facts-2`, `-3`, … when
+ * the name is already taken. Keeps public URLs human — no random suffix.
+ */
+async function uniqueSlug(base: string): Promise<string> {
+  const rows = await db
+    .select({ slug: capabilities.slug })
+    .from(capabilities)
+    .where(ilike(capabilities.slug, `${base}%`));
+  const taken = new Set(rows.map((r) => r.slug));
+  if (!taken.has(base)) return base;
+  for (let i = 2; ; i += 1) {
+    const candidate = `${base}-${i}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
+/**
  * Step 3 (final): publish with the tested responses + FAQ answers. Each request
  * stores its real captured response as the public sample. Headline price is the
  * cheapest operation.
@@ -100,7 +118,7 @@ export async function publishCapability(
       price: op.price,
     })),
   };
-  const slug = `${slugify(input.name)}-${randomBytes(3).toString("hex")}`;
+  const slug = await uniqueSlug(slugify(input.name));
 
   try {
     await db.insert(capabilities).values({

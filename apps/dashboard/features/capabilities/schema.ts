@@ -59,7 +59,7 @@ export function minPrice(operations: OperationInput[]): string {
   );
 }
 
-/** Build a URL-safe slug from a name (unique suffix appended in the action). */
+/** Build a URL-safe slug from a name (the action makes it unique on collision). */
 export function slugify(name: string): string {
   return name
     .toLowerCase()

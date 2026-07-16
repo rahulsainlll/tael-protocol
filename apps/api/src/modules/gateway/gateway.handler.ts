@@ -24,6 +24,25 @@ function parseTaelKey(header: string | null): string | null {
 }
 
 /**
+ * Serve the public discovery catalog: `GET /capabilities?q=&kind=&limit=`.
+ * Lists public, verified capabilities with only the fields a buyer needs to
+ * pick and call one — no upstream URLs, no secrets.
+ */
+export async function handleCatalogRequest(
+  deps: Pick<GatewayDeps, "capabilities">,
+  request: Request,
+): Promise<Response> {
+  const url = new URL(request.url);
+  const limitParam = url.searchParams.get("limit");
+  const items = await deps.capabilities.listCatalog({
+    q: url.searchParams.get("q") ?? undefined,
+    kind: url.searchParams.get("kind") ?? undefined,
+    limit: limitParam ? Number(limitParam) : undefined,
+  });
+  return json({ capabilities: items }, 200);
+}
+
+/**
  * Serve a capability over x402. Loads the capability, then hands the request to
  * the SDK's `tael()` wrapper: no payment → `402` challenge; valid payment →
  * verify, proxy to the real upstream, record the settled payment, and return the

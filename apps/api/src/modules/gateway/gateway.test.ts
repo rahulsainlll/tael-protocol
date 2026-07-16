@@ -50,6 +50,23 @@ function fakeCapabilities(capability: ServableCapability | null): CapabilityRepo
   return {
     findServableBySlug: (slug) =>
       Promise.resolve(capability && slug === capability.slug ? capability : null),
+    listCatalog: () =>
+      Promise.resolve(
+        capability
+          ? [
+              {
+                slug: capability.slug,
+                name: capability.name,
+                description: "",
+                kind: "api",
+                method: "GET",
+                price: capability.price,
+                logoUrl: null,
+                verified: true,
+              },
+            ]
+          : [],
+      ),
   };
 }
 
@@ -282,6 +299,25 @@ describe("capability gateway", () => {
     });
     expect(res.status).toBe(403);
     expect(await payments.list()).toHaveLength(0);
+  });
+
+  it("lists the public catalog at GET /capabilities", async () => {
+    const { container } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+
+    const res = await app.request("/capabilities");
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as {
+      capabilities: { slug: string; name: string; price: string; verified: boolean }[];
+    };
+    expect(body.capabilities).toHaveLength(1);
+    expect(body.capabilities[0]).toMatchObject({
+      slug: "predict-age",
+      name: "Age Prediction API",
+      price: "0.02",
+      verified: true,
+    });
   });
 
   it("auto-pays from the linked Card and proxies when the API key is valid", async () => {
