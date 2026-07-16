@@ -5,6 +5,7 @@ export interface CapabilityListItem {
   id: string;
   slug: string;
   name: string;
+  logoUrl: string | null;
   kind: Capability["kind"];
   status: Capability["status"];
   visibility: Capability["visibility"];
@@ -18,6 +19,7 @@ export function toListItem(capability: Capability): CapabilityListItem {
     id: capability.id,
     slug: capability.slug,
     name: capability.name,
+    logoUrl: capability.logoUrl,
     kind: capability.kind,
     status: capability.status,
     visibility: capability.visibility,

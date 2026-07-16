@@ -27,15 +27,24 @@ const FAQ_OUTPUT_SCHEMA = {
 // Frozen system prompt → cacheable prefix (see @anthropic-ai/sdk prompt caching).
 const SYSTEM_PROMPT = [
   "You help vet capabilities published to Tael, a marketplace where autonomous AI",
-  "agents discover and pay per call for APIs, MCP tools, agents, datasets, and models.",
-  "Given a capability's kind and description, produce a short FAQ that a buyer (an AI",
-  "agent or its owner) would need answered before paying to use it.",
+  "agents discover and pay per call in USDC on Stellar for APIs, MCP tools, agents,",
+  "datasets, and models. Given a capability's kind, description, and a real sample",
+  "request/response, produce a short, high-signal FAQ that a serious buyer (an AI agent",
+  "or its owner) needs answered before paying to use it.",
   "",
-  "Rules:",
-  "- Produce between 3 and 5 questions.",
-  "- Questions must be specific to THIS capability, answerable by its publisher,",
-  "  and useful for deciding whether to buy (inputs, outputs, limits, errors, auth).",
-  "- No yes/no fluff, no marketing. Each question is one clear sentence.",
+  "Produce between 4 and 5 questions, one clear sentence each, specific to THIS",
+  "capability and answerable by its publisher. Cover a spread across these areas (do",
+  "not label them, just ask the questions):",
+  "- Product: what it actually does, its exact inputs/outputs, and edge cases visible",
+  "  in the real sample response.",
+  "- Reliability: expected latency, throughput/rate limits, and error behaviour.",
+  "- Payment on Stellar: how pricing works per call, what a caller is charged if a",
+  "  request fails or returns an error, and whether price scales with usage.",
+  "- Trust: how request/response data is handled or retained, any usage/licensing",
+  "  limits, and how a buyer reaches the publisher for support.",
+  "",
+  "No yes/no fluff, no marketing, no generic filler. Prefer questions unique to this",
+  "capability over boilerplate.",
 ].join("\n");
 
 export interface GenerateFaqInput {

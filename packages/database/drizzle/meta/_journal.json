@@ -50,6 +50,20 @@
       "when": 1784123541340,
       "tag": "0006_public_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784175323641,
+      "tag": "0007_burly_hardball",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784178998035,
+      "tag": "0008_massive_rictor",
+      "breakpoints": true
     }
   ]
 }

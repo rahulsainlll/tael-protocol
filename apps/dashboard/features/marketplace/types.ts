@@ -10,6 +10,7 @@ export interface MarketplaceItem {
   slug: string;
   name: string;
   description: string;
+  logoUrl: string | null;
   kind: Capability["kind"];
   price: string;
   status: Capability["status"];
@@ -23,6 +24,7 @@ export function toMarketplaceItem(capability: Capability): MarketplaceItem {
     slug: capability.slug,
     name: capability.name,
     description: capability.description,
+    logoUrl: capability.logoUrl,
     kind: capability.kind,
     price: capability.price,
     status: capability.status,

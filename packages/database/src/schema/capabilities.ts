@@ -54,6 +54,10 @@ export const capabilities = pgTable(
     slug: text("slug").notNull().unique(),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
+    /** Optional product logo URL, shown on cards + the listing (public). */
+    logoUrl: text("logo_url"),
+    /** Optional public support/contact (email, URL, Discord, or @handle). */
+    contact: text("contact"),
     kind: capabilityKind("kind").notNull(),
     visibility: capabilityVisibility("visibility").notNull().default("public"),
     status: capabilityStatus("status").notNull().default("draft"),
