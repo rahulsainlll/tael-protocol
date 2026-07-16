@@ -3,7 +3,7 @@ import { EmptyState } from "../../../components/empty-state";
 import { PageHeader } from "../../../components/page-header";
 import { listApiKeys } from "../../../features/api-keys/queries";
 import { listCardsForPicker } from "../../../features/agents/queries";
-import { ApiKeyItem, CreateKeyButton } from "../../../features/api-keys/api-keys-manager";
+import { ApiKeysTable, CreateKeyButton } from "../../../features/api-keys/api-keys-manager";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +24,7 @@ export default async function ApiKeysPage() {
           description="Create a key, link it to a Card, and use it to call any capability from your own code."
         />
       ) : (
-        <div className="space-y-3">
-          {keys.map((row) => (
-            <ApiKeyItem key={row.id} row={row} />
-          ))}
-        </div>
+        <ApiKeysTable rows={keys} />
       )}
     </>
   );

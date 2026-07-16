@@ -3,7 +3,17 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Copy, CreditCard, KeyRound, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  CreditCard,
+  KeyRound,
+  MoreHorizontal,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import {
   Button,
   cn,
@@ -12,15 +22,25 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@tael/ui";
-import { CardVisual } from "../agents/card-visual";
+import { CardSwatch } from "../agents/card-visual";
 import type { CardPickerOption } from "../agents/queries";
 import { createApiKey, revokeApiKey } from "./actions";
 import type { ApiKeyRow } from "./queries";
 
 function timeAgo(d: Date | null): string {
-  if (!d) return "never";
+  if (!d) return "Never";
   const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
   for (const [sec, label] of [
     [86400, "d"],
@@ -29,7 +49,7 @@ function timeAgo(d: Date | null): string {
   ] as const) {
     if (s >= sec) return `${Math.floor(s / sec)}${label} ago`;
   }
-  return "just now";
+  return "Just now";
 }
 
 function cardLimits(policy: { maxPerCall: string; dailyLimit: string } | null): string {
@@ -196,8 +216,91 @@ function KeyRevealed({ keyValue, onDone }: { keyValue: string; onDone: () => voi
   );
 }
 
-export function ApiKeyItem({ row }: { row: ApiKeyRow }) {
+/** The linked Card, rendered as a compact single-line chip (swatch + name + cap). */
+function CardChip({ card }: { card: NonNullable<ApiKeyRow["card"]> }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <CardSwatch address={card.address} />
+      <span className="truncate text-sm font-medium">{card.name}</span>
+      {card.policy ? (
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          · ${card.policy.maxPerCall}/call
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** The "Funds from" cell: the linked card, or a quiet state when none is set. */
+function FundsCell({ card, revoked }: { card: ApiKeyRow["card"]; revoked: boolean }) {
+  if (card) return <CardChip card={card} />;
+  if (revoked) return <span className="text-sm text-muted-foreground">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-amber-600">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+      Not linked
+    </span>
+  );
+}
+
+export function ApiKeysTable({ rows }: { rows: ApiKeyRow[] }) {
+  const active = rows.filter((r) => r.revokedAt === null);
+  const revoked = rows.filter((r) => r.revokedAt !== null);
+  const [showRevoked, setShowRevoked] = useState(false);
+  const visible = showRevoked ? [...active, ...revoked] : active;
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-xl border">
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-11 pl-4 text-xs uppercase tracking-wide">Name</TableHead>
+              <TableHead className="text-xs uppercase tracking-wide">Key</TableHead>
+              <TableHead className="text-xs uppercase tracking-wide">Funds from</TableHead>
+              <TableHead className="text-xs uppercase tracking-wide">Last used</TableHead>
+              <TableHead className="w-12 pr-4" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.map((row) => (
+              <KeyRow key={row.id} row={row} />
+            ))}
+            {visible.length === 0 ? (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                  No active keys — all of yours are revoked.
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </div>
+
+      {revoked.length > 0 ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowRevoked((s) => !s)}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {showRevoked ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
+            {showRevoked ? "Hide" : "Show"} {revoked.length} revoked{" "}
+            {revoked.length === 1 ? "key" : "keys"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function KeyRow({ row }: { row: ApiKeyRow }) {
   const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -217,93 +320,91 @@ export function ApiKeyItem({ row }: { row: ApiKeyRow }) {
   }
 
   return (
-    <div className={cn("space-y-3 rounded-xl border p-4", revoked && "opacity-70")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+    <TableRow className={cn(revoked && "opacity-60")}>
+      <TableCell className="py-3 pl-4">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
             <KeyRound className="h-4 w-4 text-muted-foreground" />
           </span>
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <span className="truncate">{row.name}</span>
-              {revoked ? (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Revoked
-                </span>
-              ) : (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
-                  <span className="h-1 w-1 rounded-full bg-emerald-500" /> Active
-                </span>
-              )}
-            </p>
-            <p className="truncate font-mono text-xs text-muted-foreground">{row.prefix}…</p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            used {timeAgo(row.lastUsedAt)}
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate font-medium">{row.name}</span>
+            {revoked ? (
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Revoked
+              </span>
+            ) : (
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500"
+                title="Active"
+                aria-label="Active"
+              />
+            )}
           </span>
-          {!revoked ? (
-            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
-              Revoke
-            </Button>
-          ) : null}
         </div>
-      </div>
+      </TableCell>
+      <TableCell className="py-3 font-mono text-xs text-muted-foreground">{row.prefix}…</TableCell>
+      <TableCell className="py-3">
+        <FundsCell card={row.card} revoked={revoked} />
+      </TableCell>
+      <TableCell className="py-3 text-sm tabular-nums text-muted-foreground">
+        {timeAgo(row.lastUsedAt)}
+      </TableCell>
+      <TableCell className="py-3 pr-4 text-right">
+        {!revoked ? (
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`Actions for ${row.name}`}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[state=open]:bg-muted"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setMenuOpen(false);
+                  setTimeout(() => setConfirmOpen(true), 0);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Revoke key
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
 
-      {row.card ? (
-        <div className="flex items-center gap-3.5 rounded-lg border bg-muted/20 p-3">
-          <CardVisual
-            name={row.card.name}
-            address={row.card.address}
-            policy={row.card.policy}
-            compact
-          />
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Funds from
-            </p>
-            <p className="truncate text-sm font-medium">{row.card.name}</p>
-            <p className="truncate text-xs tabular-nums text-muted-foreground">
-              {cardLimits(row.card.policy)}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
-          <CreditCard className="h-4 w-4 shrink-0 text-amber-500" />
-          No Card linked — calls made with this key can&apos;t be billed yet.
-        </div>
-      )}
-
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10">
-              <TriangleAlert className="h-5 w-5 text-destructive" />
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/10">
+                <TriangleAlert className="h-5 w-5 text-destructive" />
+              </div>
+              <DialogTitle className="pt-2">Revoke key</DialogTitle>
+              <DialogDescription>
+                Revoking <span className="font-medium text-foreground">{row.name}</span> immediately
+                stops it from working. This can&apos;t be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConfirmOpen(false)}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+              <Button variant="destructive" className="flex-1" onClick={revoke} disabled={pending}>
+                {pending ? "Revoking…" : "Revoke key"}
+              </Button>
             </div>
-            <DialogTitle className="pt-2">Revoke key</DialogTitle>
-            <DialogDescription>
-              Revoking <span className="font-medium text-foreground">{row.name}</span> immediately
-              stops it from working. This can&apos;t be undone.
-            </DialogDescription>
-          </DialogHeader>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setConfirmOpen(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button variant="destructive" className="flex-1" onClick={revoke} disabled={pending}>
-              {pending ? "Revoking…" : "Revoke key"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+      </TableCell>
+    </TableRow>
   );
 }

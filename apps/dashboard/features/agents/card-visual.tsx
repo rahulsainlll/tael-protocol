@@ -26,6 +26,29 @@ function cardNumber(address?: string | null): string {
 }
 
 /**
+ * A tiny card-shaped swatch in the Card's gradient — the card's identity at a
+ * glance, for inline use in dense rows/chips where a full CardVisual is too big.
+ */
+export function CardSwatch({
+  address,
+  className,
+}: {
+  address?: string | null;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-block h-5 w-8 shrink-0 rounded-[5px] shadow-sm ring-1 ring-inset ring-white/10",
+        className,
+      )}
+      style={{ background: cardGradient(address) }}
+    />
+  );
+}
+
+/**
  * A Card rendered as a real payment card: gradient body, balance, the wallet
  * address styled like a card number, and the spending limits. Presentational.
  * With `preview`, it's a live template (no address yet) that fills in as a form
