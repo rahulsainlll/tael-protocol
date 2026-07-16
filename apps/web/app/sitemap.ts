@@ -11,6 +11,8 @@ const paths = [
   "/docs/authentication",
   "/docs/accept-payments",
   "/docs/wrap-an-api",
+  "/docs/call-a-capability",
+  "/docs/become-a-capability",
   "/docs/sdk/node",
   "/docs/sdk/curl",
   ...posts.map((post) => `/blog/${post.slug}`),
