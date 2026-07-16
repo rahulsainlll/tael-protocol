@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BadgeCheck, Search, Trash2 } from "lucide-react";
 import { cn, Input } from "@tael/ui";
 import { formatPrice, kindMeta, timeAgo } from "./kind-meta";
+import { CapabilityLogo } from "./capability-logo";
 import { DeleteCapabilityDialog } from "./delete-capability-dialog";
 import type { CapabilityListItem } from "./list-item";
 
@@ -69,14 +70,12 @@ export function CapabilitiesTable({ items }: { items: CapabilityListItem[] }) {
                 <tr key={c.id} className="transition-colors hover:bg-muted/30">
                   <td className="px-4 py-3">
                     <Link href={`/marketplace/${c.slug}`} className="flex items-center gap-3">
-                      <span
-                        className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                          meta.tile,
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </span>
+                      <CapabilityLogo
+                        src={c.logoUrl}
+                        name={c.name}
+                        kind={c.kind}
+                        className="h-9 w-9"
+                      />
                       <span className="min-w-0 font-medium">{c.name}</span>
                     </Link>
                   </td>

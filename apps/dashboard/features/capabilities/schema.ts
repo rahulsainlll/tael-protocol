@@ -17,6 +17,24 @@ export const describeCapabilitySchema = z.object({
   name: z.string().min(2, "Name is too short").max(80),
   kind: capabilityKindSchema,
   description: z.string().min(10, "Add a short description").max(500),
+  logoUrl: z
+    .string()
+    .max(200_000) // room for a compact uploaded data URL (~5-10KB) or a plain URL
+    .optional()
+    .default("")
+    .refine(
+      (v) => v === "" || /^https?:\/\//.test(v) || /^data:image\//.test(v),
+      "Enter a valid logo URL",
+    ),
+  contact: z
+    .string()
+    .max(200)
+    .optional()
+    .default("")
+    .refine(
+      (v) => v === "" || /\S+@\S+\.\S+/.test(v) || /^https?:\/\//.test(v) || /^@\w+/.test(v),
+      "Enter an email, link, or @handle",
+    ),
   payTo: stellarAddressSchema,
   upstreamUrl: z.string().url("Enter a valid URL"),
   upstreamSecret: z.string().max(500).optional().default(""),

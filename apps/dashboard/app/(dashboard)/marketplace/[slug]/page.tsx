@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BadgeCheck, ChevronDown, Code2 } from "lucide-react";
 import { cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
+import { CapabilityLogo } from "../../../../features/capabilities/capability-logo";
 import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilities/kind-meta";
 import { UseCapabilityDialog } from "../../../../features/capabilities/use-capability-dialog";
 import { RunCapabilityDialog } from "../../../../features/agents/run-capability-dialog";
@@ -28,6 +29,14 @@ export default async function CapabilityDetailPage({
   const meta = kindMeta(capability.kind);
   const Icon = meta.icon;
   const operations = capability.spec.operations ?? [];
+  const contact = capability.contact;
+  const contactHref = contact
+    ? contact.startsWith("http")
+      ? contact
+      : /\S+@\S+\.\S+/.test(contact)
+        ? `mailto:${contact}`
+        : null
+    : null;
 
   return (
     <div className="space-y-8">
@@ -40,14 +49,13 @@ export default async function CapabilityDetailPage({
 
       {/* Header */}
       <div className="flex items-start gap-4">
-        <div
-          className={cn(
-            "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl",
-            meta.tile,
-          )}
-        >
-          <Icon className="h-6 w-6" />
-        </div>
+        <CapabilityLogo
+          src={capability.logoUrl}
+          name={capability.name}
+          kind={capability.kind}
+          className="h-14 w-14 rounded-xl"
+          iconClassName="h-6 w-6"
+        />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm text-muted-foreground">Capability</p>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
@@ -100,6 +108,24 @@ export default async function CapabilityDetailPage({
           <span className="font-medium">{timeAgo(capability.createdAt.toISOString())}</span>
         </Meta>
       </div>
+
+      {contact ? (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Support</span>{" "}
+          {contactHref ? (
+            <a
+              href={contactHref}
+              target="_blank"
+              rel="noreferrer"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              {contact}
+            </a>
+          ) : (
+            <span>{contact}</span>
+          )}
+        </p>
+      ) : null}
 
       {/* Verification journey */}
       <section className="space-y-3">
