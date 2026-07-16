@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Bot, Boxes, Store, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Boxes, CreditCard, Store, Wallet } from "lucide-react";
 import { PageHeader } from "../../components/page-header";
 import { getPaymentsData } from "../../features/payments/queries";
 import { getOverviewCounts } from "../../features/overview/queries";
@@ -49,15 +49,15 @@ export default async function OverviewPage() {
       cta: "Open",
     },
     {
-      label: "Create an agent",
-      hint: "A funded hot wallet that pays per call, within limits you set.",
+      label: "Create a card",
+      hint: "A funded hot wallet your agents pay from, within limits you set.",
       done: hasAgents,
       href: "/agents",
-      cta: "Create agent",
+      cta: "Create card",
     },
     {
       label: "Run your first capability",
-      hint: "Pay for an API from your agent and settle it on-chain.",
+      hint: "Pay for an API from a card and settle it on-chain.",
       done: hasSpent,
       href: "/marketplace",
       cta: "Browse",
@@ -81,11 +81,11 @@ export default async function OverviewPage() {
     },
     {
       href: "/agents",
-      icon: Bot,
-      title: "My Agents",
+      icon: CreditCard,
+      title: "Cards",
       subtitle: hasAgents
-        ? `Manage ${plural(counts.agents, "agent", "agents")}`
-        : "Create a funded agent",
+        ? `Manage ${plural(counts.agents, "card", "cards")}`
+        : "Create a funded card",
     },
     {
       href: "/capabilities",
@@ -99,7 +99,7 @@ export default async function OverviewPage() {
       href: "/wallet",
       icon: Wallet,
       title: "Wallet",
-      subtitle: "Fund agents and set limits",
+      subtitle: "Fund cards and set limits",
     },
   ];
 

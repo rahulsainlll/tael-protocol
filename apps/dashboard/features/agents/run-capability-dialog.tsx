@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Bot, Check, Play, Search, Sparkles, TriangleAlert } from "lucide-react";
+import { Check, CreditCard, Play, Search, Sparkles, TriangleAlert } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
   Input,
 } from "@tael/ui";
+import { formatUsdc } from "../../lib/format";
 import { runCapability, type RunResult } from "./run-capability";
 import type { AgentOption } from "./queries";
 
@@ -73,7 +74,7 @@ export function RunCapabilityDialog({
         onClick={() => setOpen(true)}
         className="transition-transform duration-100 ease-out active:scale-[0.97]"
       >
-        <Play className="h-4 w-4" /> Run with agent
+        <Play className="h-4 w-4" /> Run with card
       </Button>
 
       <Dialog
@@ -85,10 +86,10 @@ export function RunCapabilityDialog({
       >
         <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader className="min-w-0">
-            <DialogTitle>Run with an agent</DialogTitle>
+            <DialogTitle>Run with a card</DialogTitle>
             <DialogDescription>
-              Your agent pays ${price} in USDC from its wallet and returns the result. Nothing
-              exceeds the caps you set.
+              Your card pays ${price} in USDC and returns the result. Nothing exceeds the caps you
+              set.
             </DialogDescription>
           </DialogHeader>
 
@@ -100,13 +101,13 @@ export function RunCapabilityDialog({
             />
           ) : eligible.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No agent can pay ${price} for this call.
+              No card can pay ${price} for this call.
               <br />
               <a
                 href="/agents"
                 className="mt-1 inline-block font-medium text-foreground hover:underline"
               >
-                Fund an agent or raise its cap
+                Fund a card or raise its cap
               </a>
             </div>
           ) : (
@@ -118,7 +119,7 @@ export function RunCapabilityDialog({
                   <Input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search agents…"
+                    placeholder="Search cards…"
                     className="pl-9"
                   />
                 </div>
@@ -138,7 +139,7 @@ export function RunCapabilityDialog({
                       }`}
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted">
-                        <Bot className="h-4 w-4" />
+                        <CreditCard className="h-4 w-4" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium">{a.name}</span>
@@ -149,7 +150,7 @@ export function RunCapabilityDialog({
                         ) : null}
                       </span>
                       <span className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                        ${Number(a.usdc).toFixed(2)}
+                        ${formatUsdc(a.usdc)}
                       </span>
                       {active ? <Check className="h-4 w-4 shrink-0 text-foreground" /> : null}
                     </button>

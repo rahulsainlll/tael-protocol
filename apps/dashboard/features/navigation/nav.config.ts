@@ -1,8 +1,8 @@
 import {
   BarChart3,
-  Bot,
   Boxes,
   Building2,
+  CreditCard,
   KeyRound,
   LayoutDashboard,
   ArrowLeftRight,
@@ -41,7 +41,7 @@ export const navGroups: NavGroup[] = [
     label: "Build",
     items: [
       { label: "My Capabilities", href: "/capabilities", icon: Boxes },
-      { label: "My Agents", href: "/agents", icon: Bot },
+      { label: "Cards", href: "/agents", icon: CreditCard },
     ],
   },
   {

@@ -29,7 +29,7 @@ export default async function PaymentsPage() {
         <StatCard
           label="Spent"
           value={spent}
-          hint="By your agents"
+          hint="By your cards"
           icon={<ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
         />
       </div>
@@ -39,7 +39,7 @@ export default async function PaymentsPage() {
         <EmptyState
           icon={Receipt}
           title="No payments yet"
-          description="Once an agent pays for one of your capabilities, or one of your agents pays for a call, it shows up here."
+          description="Once an agent pays for one of your capabilities, or one of your cards pays for a call, it shows up here."
         />
       ) : (
         <section className="space-y-3">

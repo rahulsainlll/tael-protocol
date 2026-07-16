@@ -44,7 +44,7 @@ export default async function AnalyticsPage() {
           <ChartCard title="Earnings" subtitle="USDC received per day">
             <BarChart data={a.series} metric="earned" color="#059669" />
           </ChartCard>
-          <ChartCard title="Spend" subtitle="USDC paid by your agents">
+          <ChartCard title="Spend" subtitle="USDC paid by your cards">
             <BarChart data={a.series} metric="spent" color="#6b7280" />
           </ChartCard>
           <ChartCard title="Call volume" subtitle="Paid calls per day" className="lg:col-span-2">

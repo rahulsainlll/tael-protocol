@@ -37,6 +37,15 @@ export {
 } from "./components/sheet";
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./components/tooltip";
 export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
+} from "./components/dropdown-menu";
+export {
   Sidebar,
   SidebarContent,
   SidebarFooter,

@@ -15,7 +15,23 @@ import {
   type CapabilityRepository,
   type ServableCapability,
 } from "../capabilities/capability.repository";
+import { KeyPaymentService, type AuthorizedKey, type KeyAuthorizer } from "../keys/key.service";
 import { createServer } from "../../server";
+
+// The only novel-to-#55 dependency we can't run in a unit test is the on-chain
+// signer. Mock it so the API-key → auto-pay → proxy chain runs deterministically;
+// the real signer is the same one run-capability already exercises in prod.
+vi.mock("@tael/stellar", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, buildSignedPayment: vi.fn(async () => "SIGNED-XDR-FROM-CARD") };
+});
+
+// The Card's secret is decrypted just before signing; decryption is proven
+// elsewhere and needs ENCRYPTION_KEY, so stub it (the mocked signer ignores it).
+vi.mock("@tael/database", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, decryptSecret: vi.fn(() => "TEST-CARD-SECRET") };
+});
 
 const ADDRESS = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
 
@@ -37,9 +53,25 @@ function fakeCapabilities(capability: ServableCapability | null): CapabilityRepo
   };
 }
 
+/** A KeyPaymentService over a fake authorizer — for exercising the API-key path. */
+function fakeKeys(authorizer: Partial<KeyAuthorizer> = {}): KeyPaymentService {
+  const repo: KeyAuthorizer = {
+    authorize: authorizer.authorize ?? (() => Promise.resolve(null)),
+    touch: authorizer.touch ?? (() => Promise.resolve()),
+    spentSince: authorizer.spentSince ?? (() => Promise.resolve("0")),
+  };
+  return new KeyPaymentService(repo, {
+    network: "testnet",
+    x402Network: "stellar-testnet",
+    horizonUrl: "https://horizon-testnet.stellar.org",
+    usdcIssuer: ADDRESS,
+  });
+}
+
 function buildContainer(
   capability: ServableCapability | null,
   fee?: { feeAddress: string; feeBps: number },
+  keys: KeyPaymentService = fakeKeys(),
 ): {
   container: Container;
   payments: PaymentService;
@@ -49,6 +81,7 @@ function buildContainer(
     wallets: new WalletService(new InMemoryWalletRepository()),
     payments,
     capabilities: fakeCapabilities(capability),
+    keys,
     verifier: createMockVerifier(),
     gateway: {
       issuer: ADDRESS,
@@ -202,5 +235,93 @@ describe("capability gateway", () => {
     expect(res.status).toBe(502);
     expect(upstream).not.toHaveBeenCalled();
     expect(await payments.list()).toHaveLength(0);
+  });
+
+  it("401s when an API key is unknown or revoked", async () => {
+    const { container } = buildContainer(CAPABILITY); // default authorizer → null
+    const app = createServer(container);
+
+    const res = await app.request("/c/predict-age", {
+      headers: { authorization: "Bearer tael_live_deadbeef" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("402s when the API key has no linked Card", async () => {
+    const keys = fakeKeys({
+      authorize: (): Promise<AuthorizedKey | null> => Promise.resolve({ id: "k1", card: null }),
+    });
+    const { container } = buildContainer(CAPABILITY, undefined, keys);
+    const app = createServer(container);
+
+    const res = await app.request("/c/predict-age", {
+      headers: { authorization: "Bearer tael_live_abc123" },
+    });
+    expect(res.status).toBe(402);
+  });
+
+  it("403s when the call exceeds the Card's per-call cap (before signing)", async () => {
+    const keys = fakeKeys({
+      authorize: (): Promise<AuthorizedKey | null> =>
+        Promise.resolve({
+          id: "k1",
+          card: {
+            agentId: "a1",
+            address: ADDRESS,
+            secretEnc: "unused",
+            policy: { maxPerCall: "0.01", dailyLimit: "5", blockedPublishers: [] },
+          },
+        }),
+    });
+    // Capability price 0.02 > the Card's 0.01 per-call cap.
+    const { container, payments } = buildContainer(CAPABILITY, undefined, keys);
+    const app = createServer(container);
+
+    const res = await app.request("/c/predict-age", {
+      headers: { authorization: "Bearer tael_live_abc123" },
+    });
+    expect(res.status).toBe(403);
+    expect(await payments.list()).toHaveLength(0);
+  });
+
+  it("auto-pays from the linked Card and proxies when the API key is valid", async () => {
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ age: 41 }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", upstream);
+
+    const keys = fakeKeys({
+      authorize: (): Promise<AuthorizedKey | null> =>
+        Promise.resolve({
+          id: "k1",
+          card: {
+            agentId: "a1",
+            address: ADDRESS,
+            secretEnc: "unused",
+            policy: { maxPerCall: "1", dailyLimit: "10", blockedPublishers: [] },
+          },
+        }),
+    });
+    const { container, payments } = buildContainer(CAPABILITY, undefined, keys);
+    const app = createServer(container);
+
+    const res = await app.request("/c/predict-age", {
+      headers: { authorization: "Bearer tael_live_valid" },
+    });
+
+    // The call succeeded without the caller ever attaching a payment header…
+    expect(res.status).toBe(200);
+    expect(res.headers.get(PAYMENT_RESPONSE_HEADER)).toBeTruthy();
+    expect(await res.json()).toEqual({ age: 41 });
+
+    // …the upstream ran, and the settlement was recorded against the Card.
+    expect(upstream).toHaveBeenCalledOnce();
+    const ledger = await payments.list();
+    expect(ledger).toHaveLength(1);
+    expect(ledger[0]).toMatchObject({ amount: "0.02", fee: "0", status: "settled" });
   });
 });

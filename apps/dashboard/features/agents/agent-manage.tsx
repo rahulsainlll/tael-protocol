@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Trash2 } from "lucide-react";
+import { Check, Copy, TriangleAlert, Trash2 } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -86,8 +86,16 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
         {agent.ready ? (
           <>
             <p className="text-sm text-muted-foreground">
-              Send USDC on Stellar to this address. The agent pays from it, up to its cap.
+              Send <span className="font-medium text-foreground">USDC</span> on Stellar to this
+              address, and your agents pay from it up to the caps below.
             </p>
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2 text-xs text-amber-700">
+              <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                Send <span className="font-semibold">USDC</span>, not XLM. XLM only covers the
+                account reserve and fees, so it won&apos;t add spendable balance.
+              </span>
+            </div>
             <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2.5">
               <span className="min-w-0 flex-1 break-all font-mono text-sm">{agent.address}</span>
               <button
@@ -152,9 +160,9 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
         </h2>
         <div className="flex items-center justify-between rounded-xl border border-destructive/20 p-4">
           <div>
-            <p className="text-sm font-medium">Delete this agent</p>
+            <p className="text-sm font-medium">Delete this card</p>
             <p className="text-sm text-muted-foreground">
-              Removes the agent. Any on-chain funds stay recoverable.
+              Removes the card. Any on-chain funds stay recoverable.
             </p>
           </div>
           <Button variant="outline" onClick={() => setConfirmOpen(true)}>
@@ -172,7 +180,7 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete agent</DialogTitle>
+            <DialogTitle>Delete card</DialogTitle>
             <DialogDescription>
               This removes <span className="font-medium text-foreground">{agent.name}</span>. Type{" "}
               <span className="font-mono font-semibold text-foreground">delete</span> to confirm.
@@ -199,7 +207,7 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
               onClick={remove}
               disabled={pending || confirmText.trim().toLowerCase() !== "delete"}
             >
-              {pending ? "Deleting…" : "Delete agent"}
+              {pending ? "Deleting…" : "Delete card"}
             </Button>
           </div>
         </DialogContent>

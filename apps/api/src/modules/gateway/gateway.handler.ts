@@ -1,16 +1,26 @@
 import { tael } from "@tael/sdk";
-import { splitFee } from "@tael/payments";
+import { PAYMENT_REQUEST_HEADER, splitFee } from "@tael/payments";
 import { type Container } from "../../container";
 import { proxyToUpstream, isBlockedUrl } from "./upstream";
 
 /** The slice of the container the gateway needs. */
-export type GatewayDeps = Pick<Container, "capabilities" | "payments" | "verifier" | "gateway">;
+export type GatewayDeps = Pick<
+  Container,
+  "capabilities" | "payments" | "verifier" | "gateway" | "keys"
+>;
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+/** Extract a Tael API key from an `Authorization: Bearer tael_live_…` header. */
+function parseTaelKey(header: string | null): string | null {
+  if (!header) return null;
+  const match = /^Bearer\s+(tael_live_[A-Za-z0-9]+)$/i.exec(header.trim());
+  return match ? match[1]! : null;
 }
 
 /**
@@ -45,6 +55,30 @@ export async function handleGatewayRequest(
       : undefined;
   const split = splitFee(capability.price, fee ? deps.gateway.feeBps : 0);
 
+  // API-key path: when the caller sends a Tael key (and hasn't already attached
+  // a signed payment), authenticate it and auto-pay from its linked Card, within
+  // the Card's caps. The wallet/x402 path below still works with no key.
+  let servedRequest = request;
+  const bearer = parseTaelKey(request.headers.get("authorization"));
+  if (bearer && !request.headers.has(PAYMENT_REQUEST_HEADER)) {
+    const key = await deps.keys.authorize(bearer);
+    if (!key) return json({ error: "Invalid or revoked API key" }, 401);
+    if (!key.card) {
+      return json({ error: "This API key has no Card linked. Link one to spend from it." }, 402);
+    }
+
+    const legs = [{ to: capability.payTo, amount: split.net }];
+    if (fee) legs.push({ to: fee.payTo, amount: split.fee });
+
+    const payment = await deps.keys.payForCall({ card: key.card, total: capability.price, legs });
+    if (!payment.ok) return json({ error: payment.error }, payment.status);
+
+    const headers = new Headers(request.headers);
+    headers.set(PAYMENT_REQUEST_HEADER, payment.xPayment);
+    servedRequest = new Request(request, { headers });
+    void deps.keys.touch(key.id).catch(() => {});
+  }
+
   const paid = tael({
     price: capability.price,
     payTo: capability.payTo,
@@ -78,5 +112,5 @@ export async function handleGatewayRequest(
     },
   });
 
-  return paid(request);
+  return paid(servedRequest);
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, Wallet as WalletIcon } from "lucide-react";
+import { CreditCard, Wallet as WalletIcon } from "lucide-react";
 import { PageHeader } from "../../../components/page-header";
 import { getWalletOverview } from "../../../features/wallet/queries";
 import { WalletAddress } from "../../../features/wallet/wallet-address";
@@ -17,7 +17,7 @@ export default async function WalletPage() {
     <>
       <PageHeader
         title="Wallet"
-        description="Your connected wallet and the funds across your agents."
+        description="Your connected wallet and the funds across your cards."
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -45,26 +45,25 @@ export default async function WalletPage() {
           className="group flex flex-col rounded-xl border p-5 transition-[border-color,box-shadow,transform] duration-150 ease-out hover:border-foreground/20 hover:shadow-sm active:scale-[0.99]"
         >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Bot className="h-4 w-4" /> Across your agents
+            <CreditCard className="h-4 w-4" /> Across your cards
           </div>
           <p className="mt-2 text-3xl font-semibold tabular-nums">
             ${usd(w.agentsUsdc)}{" "}
             <span className="text-base font-normal text-muted-foreground">USDC</span>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {w.agentCount} {w.agentCount === 1 ? "agent" : "agents"} · manage funding
+            {w.agentCount} {w.agentCount === 1 ? "card" : "cards"} · manage funding
           </p>
         </Link>
       </div>
 
       <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
-        Tael is non-custodial: funds stay in your wallet and your agents&apos; wallets. Fund an
-        agent from{" "}
+        Tael is non-custodial: funds stay in your wallet and your cards. Fund a card from{" "}
         <Link href="/agents" className="font-medium text-foreground hover:underline">
-          My Agents
+          Cards
         </Link>{" "}
-        to let it pay per call. On testnet, add the USDC trustline in your wallet to receive
-        earnings.
+        to let your agents pay per call. On testnet, add the USDC trustline in your wallet to
+        receive earnings.
       </div>
     </>
   );
