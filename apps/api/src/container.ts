@@ -24,6 +24,8 @@ import {
   DbCapabilityRepository,
   type CapabilityRepository,
 } from "./modules/capabilities/capability.repository";
+import { DbApiKeyRepository } from "./modules/keys/key.repository";
+import { KeyPaymentService } from "./modules/keys/key.service";
 
 /**
  * The composition root. This is the ONE place where concrete implementations are
@@ -35,6 +37,8 @@ export interface Container {
   wallets: WalletService;
   payments: PaymentService;
   capabilities: CapabilityRepository;
+  /** Authenticates Tael API keys and auto-pays from their linked Card. */
+  keys: KeyPaymentService;
   verifier: PaymentVerifier;
   /** Payment settings the gateway needs to build x402 challenges. */
   gateway: {
@@ -110,6 +114,16 @@ export function createContainer(env: Env): Container {
   );
   const capabilities = new DbCapabilityRepository(db);
 
+  // API-key auth: resolve a key to its Card and sign payments from that Card's
+  // hot wallet, within the Card's caps. Needs the same Stellar settings the
+  // verifier uses. Without a DB, key auth simply never authenticates.
+  const keys = new KeyPaymentService(new DbApiKeyRepository(db), {
+    network: env.STELLAR_NETWORK,
+    x402Network: toPaymentNetwork(env.STELLAR_NETWORK),
+    horizonUrl: env.STELLAR_HORIZON_URL,
+    usdcIssuer: env.USDC_ISSUER,
+  });
+
   // Real on-chain settlement in production; a mock keeps dev + tests hermetic.
   const verifier = isProd ? createStellarVerifier(env) : createMockVerifier();
 
@@ -117,6 +131,7 @@ export function createContainer(env: Env): Container {
     wallets,
     payments,
     capabilities,
+    keys,
     verifier,
     gateway: {
       issuer: env.USDC_ISSUER,
