@@ -20,13 +20,24 @@ export const timestamps = {
 
 // --- Native enums (created as real Postgres types, not text) ---
 
-/** Kinds of purchasable capability. Mirrors @tael/types capabilityKind. */
+/**
+ * Kinds of purchasable capability. Mirrors @tael/types capabilityKind.
+ *
+ * "credit" is TrustLine's addition: unlike every other kind, its upstream is
+ * NOT a third-party service Tael proxies to — it's TrustLine's own read-only
+ * underwriting API (GET .../agent/:address/available-credit). It fits the
+ * existing per-call-price gateway model unmodified (a genuine, cheap, metered
+ * HTTP call), so no gateway changes were needed to add it — see
+ * TRUSTLINE_INTEGRATION.md for the full story (why this isn't a bigger,
+ * gateway-special-cased "financial capability" kind).
+ */
 export const capabilityKind = pgEnum("capability_kind", [
   "api",
   "mcp",
   "agent",
   "model",
   "dataset",
+  "credit",
 ]);
 
 /** Visibility of a published capability in the marketplace. */

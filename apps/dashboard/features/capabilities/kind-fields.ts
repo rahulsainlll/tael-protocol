@@ -73,6 +73,15 @@ export const KIND_FIELDS: Record<string, KindFields> = {
     responseLabel: "Sample rows",
     responsePlaceholder: `[ { "date": "2026-07-12", "close": 231.4 } ]`,
   },
+  credit: {
+    method: true,
+    urlLabel: "Underwriting endpoint",
+    urlPlaceholder: "https://trustline.onrender.com/agent/:address/available-credit",
+    requestLabel: "Sample request",
+    requestPlaceholder: `GET /agent/GABC…XYZ/available-credit`,
+    responseLabel: "Sample response",
+    responsePlaceholder: `{ "agent": "GABC…XYZ", "rampedLimitUsdc": 12.5, "tier": 2, "aprBps": 850 }`,
+  },
 };
 
 export function kindFields(kind: string): KindFields {
