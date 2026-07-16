@@ -18,6 +18,7 @@ export {
   desc,
   asc,
   sql,
+  ilike,
   inArray,
   isNull,
   isNotNull,
