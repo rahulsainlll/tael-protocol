@@ -64,6 +64,13 @@
       "when": 1784178998035,
       "tag": "0008_massive_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784183943146,
+      "tag": "0009_hard_annihilus",
+      "breakpoints": true
     }
   ]
 }

@@ -57,6 +57,26 @@ export async function listAgentWallets(): Promise<AgentWallet[]> {
   );
 }
 
+export interface CardPickerOption {
+  id: string;
+  name: string;
+  policy: SpendingPolicy | null;
+}
+
+/**
+ * The user's Cards for a picker (e.g. linking an API key), DB-only — no Horizon
+ * balance calls, so it's fast to render inline in a dialog.
+ */
+export async function listCardsForPicker(): Promise<CardPickerOption[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  return db
+    .select({ id: agents.id, name: agents.name, policy: agents.policy })
+    .from(agents)
+    .where(eq(agents.ownerId, user.id))
+    .orderBy(desc(agents.createdAt));
+}
+
 export interface AgentOption {
   agentId: string;
   name: string;

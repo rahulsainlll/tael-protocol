@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Copy, KeyRound, TriangleAlert } from "lucide-react";
+import { Check, Copy, CreditCard, KeyRound, TriangleAlert } from "lucide-react";
 import {
   Button,
+  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -12,6 +14,8 @@ import {
   DialogTitle,
   Input,
 } from "@tael/ui";
+import { CardVisual } from "../agents/card-visual";
+import type { CardPickerOption } from "../agents/queries";
 import { createApiKey, revokeApiKey } from "./actions";
 import type { ApiKeyRow } from "./queries";
 
@@ -28,16 +32,22 @@ function timeAgo(d: Date | null): string {
   return "just now";
 }
 
-export function CreateKeyButton() {
+function cardLimits(policy: { maxPerCall: string; dailyLimit: string } | null): string {
+  return policy ? `max $${policy.maxPerCall}/call · $${policy.dailyLimit}/day` : "no limits set";
+}
+
+export function CreateKeyButton({ cards }: { cards: CardPickerOption[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [cardId, setCardId] = useState<string>(cards[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [createdKey, setCreatedKey] = useState<string | null>(null);
 
   function reset() {
     setName("");
+    setCardId(cards[0]?.id ?? "");
     setError(null);
     setCreatedKey(null);
   }
@@ -45,7 +55,7 @@ export function CreateKeyButton() {
   function submit() {
     setError(null);
     startTransition(async () => {
-      const res = await createApiKey(name);
+      const res = await createApiKey(name, cardId || null);
       if (res.ok && res.key) {
         setCreatedKey(res.key);
         router.refresh();
@@ -73,8 +83,7 @@ export function CreateKeyButton() {
               <DialogHeader className="min-w-0">
                 <DialogTitle>Create API key</DialogTitle>
                 <DialogDescription>
-                  Name it so you can recognize it later. You&apos;ll see the key once, right after
-                  it&apos;s created.
+                  Name it, choose the Card it spends from, and you&apos;ll see the key once.
                 </DialogDescription>
               </DialogHeader>
               <div className="min-w-0 space-y-4">
@@ -90,6 +99,39 @@ export function CreateKeyButton() {
                     }}
                   />
                 </label>
+
+                <div className="space-y-1.5">
+                  <span className="text-sm font-medium">Funds from</span>
+                  <p className="text-xs text-muted-foreground">
+                    Which Card pays for calls made with this key.
+                  </p>
+                  {cards.length === 0 ? (
+                    <p className="rounded-lg border border-dashed px-3 py-2.5 text-xs text-muted-foreground">
+                      No Cards yet.{" "}
+                      <Link href="/agents" className="font-medium text-foreground underline">
+                        Create a Card
+                      </Link>{" "}
+                      to fund this key. You can also make the key now and link one later.
+                    </p>
+                  ) : (
+                    <div className="relative">
+                      <CreditCard className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <select
+                        value={cardId}
+                        onChange={(e) => setCardId(e.target.value)}
+                        className="h-9 w-full rounded-md border border-input bg-transparent pl-9 pr-3 text-sm"
+                      >
+                        {cards.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} — {cardLimits(c.policy)}
+                          </option>
+                        ))}
+                        <option value="">No Card (link one later)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
                 <Button
                   className="w-full transition-transform duration-100 ease-out active:scale-[0.99]"
@@ -175,34 +217,64 @@ export function ApiKeyItem({ row }: { row: ApiKeyRow }) {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
-        <KeyRound className="h-4 w-4 text-muted-foreground" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 text-sm font-medium">
-          {row.name}
-          {revoked ? (
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Revoked
-            </span>
+    <div className={cn("space-y-3 rounded-xl border p-4", revoked && "opacity-70")}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <KeyRound className="h-4 w-4 text-muted-foreground" />
+          </span>
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <span className="truncate">{row.name}</span>
+              {revoked ? (
+                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Revoked
+                </span>
+              ) : (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
+                  <span className="h-1 w-1 rounded-full bg-emerald-500" /> Active
+                </span>
+              )}
+            </p>
+            <p className="truncate font-mono text-xs text-muted-foreground">{row.prefix}…</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            used {timeAgo(row.lastUsedAt)}
+          </span>
+          {!revoked ? (
+            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
+              Revoke
+            </Button>
           ) : null}
-        </p>
-        <p className="truncate font-mono text-xs text-muted-foreground">{row.prefix}…</p>
+        </div>
       </div>
-      <p className="shrink-0 text-right text-xs text-muted-foreground">
-        used {timeAgo(row.lastUsedAt)}
-      </p>
-      {!revoked ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={() => setConfirmOpen(true)}
-        >
-          Revoke
-        </Button>
-      ) : null}
+
+      {row.card ? (
+        <div className="flex items-center gap-3.5 rounded-lg border bg-muted/20 p-3">
+          <CardVisual
+            name={row.card.name}
+            address={row.card.address}
+            policy={row.card.policy}
+            compact
+          />
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Funds from
+            </p>
+            <p className="truncate text-sm font-medium">{row.card.name}</p>
+            <p className="truncate text-xs tabular-nums text-muted-foreground">
+              {cardLimits(row.card.policy)}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+          <CreditCard className="h-4 w-4 shrink-0 text-amber-500" />
+          No Card linked — calls made with this key can&apos;t be billed yet.
+        </div>
+      )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md">

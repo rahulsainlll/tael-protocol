@@ -1,6 +1,7 @@
 import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { primaryId, timestamps } from "./_shared";
 import { users } from "./users";
+import { agents } from "./agents";
 
 /**
  * Programmatic access tokens for a user's agents/services. Only a hash of the
@@ -13,6 +14,8 @@ export const apiKeys = pgTable(
     ownerId: uuid("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** The Card (agent hot wallet) this key spends from; null = no funding source. */
+    agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
     name: text("name").notNull().default("Default"),
     /** First few chars of the key, e.g. "tael_live_abcd", shown in the dashboard. */
     prefix: text("prefix").notNull(),

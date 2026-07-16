@@ -3,7 +3,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { and, apiKeys, eq, isNull } from "@tael/database";
+import { agents, and, apiKeys, eq, isNull } from "@tael/database";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "../capabilities/current-user";
 
@@ -21,7 +21,7 @@ export interface CreateKeyResult {
  * short prefix for identification, and return the raw key exactly once. The raw
  * key is never persisted and cannot be recovered later.
  */
-export async function createApiKey(name: string): Promise<CreateKeyResult> {
+export async function createApiKey(name: string, cardId?: string | null): Promise<CreateKeyResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
@@ -30,12 +30,27 @@ export async function createApiKey(name: string): Promise<CreateKeyResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid name." };
   }
 
+  // A key optionally funds from one of the user's Cards (agent hot wallets).
+  // Verify ownership before linking so a key can't point at someone else's Card.
+  let agentId: string | null = null;
+  if (cardId) {
+    const [card] = await db
+      .select({ id: agents.id })
+      .from(agents)
+      .where(and(eq(agents.id, cardId), eq(agents.ownerId, user.id)))
+      .limit(1);
+    if (!card) return { ok: false, error: "That Card was not found." };
+    agentId = card.id;
+  }
+
   const raw = `tael_live_${randomBytes(24).toString("hex")}`;
   const keyHash = createHash("sha256").update(raw).digest("hex");
   const prefix = raw.slice(0, 16); // "tael_live_" + 6 chars
 
   try {
-    await db.insert(apiKeys).values({ ownerId: user.id, name: parsed.data, prefix, keyHash });
+    await db
+      .insert(apiKeys)
+      .values({ ownerId: user.id, name: parsed.data, prefix, keyHash, agentId });
   } catch (error) {
     console.error("[api-keys] create failed:", error);
     return { ok: false, error: "Could not create the key. Try again." };
