@@ -36,6 +36,7 @@ function toPayment(row: PaymentRow): Payment {
   return {
     id: row.id,
     capabilityId: row.capabilityId ?? "",
+    capabilityName: row.capabilityName ?? null,
     payer: row.payer,
     payee: row.payee,
     amount: row.amount,
@@ -56,6 +57,7 @@ export class DbPaymentRepository implements PaymentRepository {
       .values({
         id: payment.id,
         capabilityId: payment.capabilityId || null,
+        capabilityName: payment.capabilityName ?? null,
         payer: payment.payer,
         payee: payment.payee,
         amount: payment.amount,

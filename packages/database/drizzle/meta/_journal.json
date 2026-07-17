@@ -71,6 +71,13 @@
       "when": 1784183943146,
       "tag": "0009_hard_annihilus",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784269000701,
+      "tag": "0010_mean_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }

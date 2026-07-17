@@ -14,6 +14,8 @@ export const payments = pgTable(
   {
     id: primaryId(),
     capabilityId: uuid("capability_id").references(() => capabilities.id, { onDelete: "set null" }),
+    /** Capability name at settlement time, kept so history survives its deletion. */
+    capabilityName: text("capability_name"),
     agentId: uuid("agent_id").references(() => agents.id, { onDelete: "set null" }),
 
     /** Payer + payee Stellar addresses (denormalized so history is self-contained). */
