@@ -30,6 +30,12 @@ type Kind = (typeof KINDS)[number];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
+// The USDC issuer Tael settles in. A payout wallet MUST hold a trustline for
+// this issuer, or Stellar rejects the payment (op_no_trust). Shown to publishers
+// so they set it up before listing.
+const USDC_ISSUER =
+  process.env.NEXT_PUBLIC_USDC_ISSUER ?? "GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA";
+
 type Step = "describe" | "test" | "verify" | "done";
 type Answer = { question: string; answer: string };
 type Operation = {
@@ -508,6 +514,17 @@ export function PublishWizard() {
                 required
               />
             </Field>
+
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2.5 text-xs text-amber-700">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0">
+                Your pay-to wallet must hold a <span className="font-semibold">USDC trustline</span>{" "}
+                for Tael&apos;s issuer, or payments will be rejected on-chain. Add a trustline to:
+                <span className="mt-1 block break-all font-mono text-[11px] text-amber-800">
+                  {USDC_ISSUER}
+                </span>
+              </span>
+            </div>
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
