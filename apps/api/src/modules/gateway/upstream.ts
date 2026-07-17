@@ -39,14 +39,22 @@ const STRIPPED_REQUEST_HEADERS = new Set([
   "authorization",
 ]);
 
+/** Join a base upstream URL with an operation path (empty path = the base). */
+export function resolveUpstreamUrl(base: string, path: string): string {
+  if (!path) return base;
+  return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
+}
+
 /**
  * Proxy the (already-paid) request to the capability's real upstream endpoint,
  * injecting the decrypted API key. Forwards the caller's method, body, and safe
- * headers; returns the upstream response verbatim.
+ * headers; returns the upstream response verbatim. `targetUrl` is the resolved
+ * endpoint (base URL, or base + the operation's path).
  */
 export async function proxyToUpstream(
   capability: ServableCapability,
   request: Request,
+  targetUrl: string = capability.upstreamUrl,
 ): Promise<Response> {
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -62,7 +70,7 @@ export async function proxyToUpstream(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const upstream = await fetch(capability.upstreamUrl, {
+    const upstream = await fetch(targetUrl, {
       method,
       headers,
       body: hasBody ? await request.arrayBuffer() : undefined,

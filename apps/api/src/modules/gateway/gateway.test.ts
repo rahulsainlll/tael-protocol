@@ -43,6 +43,10 @@ const CAPABILITY: ServableCapability = {
   payTo: ADDRESS,
   upstreamUrl: "https://api.example.com/age",
   upstreamSecretEnc: null,
+  operations: [
+    { slug: "premium", path: "/premium", price: "0.05" },
+    { slug: "ping", path: "/ping", price: "0" },
+  ],
 };
 
 /** A capability repo that returns the fixture for its slug and null otherwise. */
@@ -140,6 +144,64 @@ describe("capability gateway", () => {
     expect(body.accepts[0]?.maxAmountRequired).toBe("0.02");
     expect(body.accepts[0]?.payTo).toBe(ADDRESS);
     expect(body.accepts[0]?.resource).toBe("/c/predict-age");
+  });
+
+  it("charges the operation's price at /c/:slug/:operation", async () => {
+    const { container } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+
+    // Base capability keeps its headline price…
+    const base = await app.request("/c/predict-age");
+    const baseBody = (await base.json()) as { accepts: { maxAmountRequired: string }[] };
+    expect(baseBody.accepts[0]?.maxAmountRequired).toBe("0.02");
+
+    // …the operation advertises its own.
+    const op = await app.request("/c/predict-age/premium");
+    expect(op.status).toBe(402);
+    const opBody = (await op.json()) as {
+      accepts: { maxAmountRequired: string; resource: string }[];
+    };
+    expect(opBody.accepts[0]?.maxAmountRequired).toBe("0.05");
+    expect(opBody.accepts[0]?.resource).toBe("/c/predict-age/premium");
+  });
+
+  it("serves a free operation (price 0) with no payment required", async () => {
+    const upstream = vi.fn<typeof fetch>(
+      async () => new Response(JSON.stringify({ pong: true }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", upstream);
+
+    const { container, payments } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+
+    // No X-PAYMENT, no key — a free op just returns the result.
+    const res = await app.request("/c/predict-age/ping");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ pong: true });
+    expect(upstream.mock.calls[0]?.[0]).toBe("https://api.example.com/age/ping");
+    // Nothing charged, nothing recorded.
+    expect(await payments.list()).toHaveLength(0);
+  });
+
+  it("404s for an unknown operation on a real capability", async () => {
+    const { container } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+    const res = await app.request("/c/predict-age/does-not-exist");
+    expect(res.status).toBe(404);
+  });
+
+  it("routes an operation call to the base URL + the operation path", async () => {
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    const { container } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+    await app.request("/c/predict-age/premium", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    expect(upstream.mock.calls[0]?.[0]).toBe("https://api.example.com/age/premium");
   });
 
   it("proxies to the upstream and records the payment when paid", async () => {

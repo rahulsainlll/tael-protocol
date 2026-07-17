@@ -22,6 +22,18 @@ export interface CapabilityFaq {
 export interface CapabilityOperation {
   /** Human label, e.g. "Extract text" or "GET /prices". */
   name: string;
+  /**
+   * URL-safe handle for addressing this operation at `/c/<slug>/<op>`. When
+   * absent, it's derived from `name`. Lets one capability expose many priced
+   * operations (e.g. a Nebula MCP with balance / quote / swap / pay).
+   */
+  slug?: string;
+  /**
+   * Optional path appended to the capability's `upstreamUrl` for this operation,
+   * e.g. "/v1/swap". Empty means the base URL (the operation is selected by the
+   * request body, as with an MCP tool call).
+   */
+  path?: string;
   /** HTTP method for API/model kinds, e.g. "GET" | "POST". */
   method?: string;
   /** Example request payload (JSON string), shown publicly. */

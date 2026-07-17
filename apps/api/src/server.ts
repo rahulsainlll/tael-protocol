@@ -24,7 +24,11 @@ export function createServer(container: Container) {
 
   // The capability gateway: agents call `/c/:slug` and pay per call over x402.
   // Public + unauthenticated by design — the payment *is* the authentication.
+  // `/c/:slug/:operation` picks a specific priced operation of the capability.
   app.all("/c/:slug", (c) => handleGatewayRequest(container, c.req.param("slug"), c.req.raw));
+  app.all("/c/:slug/:operation", (c) =>
+    handleGatewayRequest(container, c.req.param("slug"), c.req.raw, c.req.param("operation")),
+  );
 
   // Mount the tRPC router. The dashboard/SDK talk to this with full type safety.
   app.all("/trpc/*", (c) =>
