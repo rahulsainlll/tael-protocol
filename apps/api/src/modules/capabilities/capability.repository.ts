@@ -1,4 +1,14 @@
-import { and, capabilities, desc, eq, ilike, ne, or, type Database } from "@tael/database";
+import {
+  and,
+  capabilities,
+  desc,
+  eq,
+  ilike,
+  ne,
+  or,
+  type Database,
+  type UpstreamAuth,
+} from "@tael/database";
 import { TaelError } from "@tael/types";
 
 /** One callable operation of a capability, resolved for the gateway. */
@@ -27,6 +37,8 @@ export interface ServableCapability {
   upstreamUrl: string;
   /** Encrypted upstream API key (AES-256-GCM), or null if the upstream is open. */
   upstreamSecretEnc: string | null;
+  /** Upstream authentication scheme configuration. */
+  upstreamAuth: UpstreamAuth;
   /** Priced operations, for `/c/<slug>/<op>`. Empty when the capability is flat. */
   operations: ServableOperation[];
 }
@@ -103,6 +115,7 @@ export class DbCapabilityRepository implements CapabilityRepository {
         payTo: capabilities.payTo,
         upstreamUrl: capabilities.upstreamUrl,
         upstreamSecretEnc: capabilities.upstreamSecretEnc,
+        upstreamAuth: capabilities.upstreamAuth,
         spec: capabilities.spec,
       })
       .from(capabilities)
@@ -121,7 +134,17 @@ export class DbCapabilityRepository implements CapabilityRepository {
       path: op.path ?? "",
       price: op.price,
     }));
-    return { ...row, operations };
+    return {
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      price: row.price,
+      payTo: row.payTo,
+      upstreamUrl: row.upstreamUrl,
+      upstreamSecretEnc: row.upstreamSecretEnc,
+      upstreamAuth: row.upstreamAuth ?? { scheme: "bearer" },
+      operations,
+    };
   }
 
   async listCatalog(query: CatalogQuery = {}): Promise<CatalogCapability[]> {

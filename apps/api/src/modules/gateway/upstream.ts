@@ -60,8 +60,23 @@ export async function proxyToUpstream(
   request.headers.forEach((value, key) => {
     if (!STRIPPED_REQUEST_HEADERS.has(key.toLowerCase())) headers.set(key, value);
   });
-  if (capability.upstreamSecretEnc) {
-    headers.set("authorization", `Bearer ${decryptSecret(capability.upstreamSecretEnc)}`);
+  const auth = capability.upstreamAuth ?? { scheme: "bearer" };
+  const secret = capability.upstreamSecretEnc
+    ? decryptSecret(capability.upstreamSecretEnc)
+    : undefined;
+
+  if (secret) {
+    if (auth.scheme === "bearer") {
+      headers.set("authorization", `Bearer ${secret}`);
+    } else if (auth.scheme === "header" && auth.header) {
+      headers.set(auth.header, secret);
+    }
+  }
+
+  if (auth.extraHeaders) {
+    for (const [key, value] of Object.entries(auth.extraHeaders)) {
+      headers.set(key, value);
+    }
   }
 
   const method = request.method.toUpperCase();

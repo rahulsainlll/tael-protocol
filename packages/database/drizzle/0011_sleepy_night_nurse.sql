@@ -1,0 +1,1 @@
+ALTER TABLE "capabilities" ADD COLUMN "upstream_auth" jsonb;
