@@ -75,12 +75,12 @@ export const KIND_FIELDS: Record<string, KindFields> = {
   },
   credit: {
     method: true,
-    urlLabel: "Underwriting endpoint",
-    urlPlaceholder: "https://trustline.onrender.com/agent/:address/available-credit",
+    urlLabel: "Credit endpoint",
+    urlPlaceholder: "https://api.example.com/agent/:address/available-credit",
     requestLabel: "Sample request",
-    requestPlaceholder: `GET /agent/GABC…XYZ/available-credit`,
+    requestPlaceholder: `GET /agent/G…/available-credit`,
     responseLabel: "Sample response",
-    responsePlaceholder: `{ "agent": "GABC…XYZ", "rampedLimitUsdc": 12.5, "tier": 2, "aprBps": 850 }`,
+    responsePlaceholder: `{ "agent": "G…", "availableCreditUsdc": 12.5, "tier": 2, "aprBps": 850 }`,
   },
 };
 
