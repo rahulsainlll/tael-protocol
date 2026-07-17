@@ -57,7 +57,16 @@ async function spentLast24h(payer: string): Promise<Money> {
  * a runaway agent can never exceed the caps the owner set. The signing key is
  * decrypted only here, on the server, and never leaves it.
  */
-export async function runCapability(input: { agentId: string; slug: string }): Promise<RunResult> {
+export async function runCapability(input: {
+  agentId: string;
+  slug: string;
+  /** Optional operation slug: calls `/c/<slug>/<operation>` and pays its price. */
+  operation?: string;
+  /** HTTP method for the call (defaults to GET). */
+  method?: string;
+  /** Request body to forward to the capability (e.g. the tool selector for MCP). */
+  body?: string;
+}): Promise<RunResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
@@ -74,12 +83,35 @@ export async function runCapability(input: { agentId: string; slug: string }): P
 
   if (!agent?.secretEnc) return { ok: false, error: "Agent wallet not found." };
 
+  const url = input.operation
+    ? `${API_URL}/c/${input.slug}/${input.operation}`
+    : `${API_URL}/c/${input.slug}`;
+  const method = (input.method || "GET").toUpperCase();
+  const hasBody = method !== "GET" && method !== "HEAD" && Boolean(input.body?.trim());
+  const bodyInit = hasBody
+    ? {
+        body: input.body,
+        headers: { "content-type": "application/json" } as Record<string, string>,
+      }
+    : { headers: {} as Record<string, string> };
+
   // 1. Ask the gateway what this call costs (the 402 challenge).
   let req: Requirement;
   try {
-    const res = await fetch(`${API_URL}/c/${input.slug}`, { cache: "no-store" });
+    const res = await fetch(url, { cache: "no-store" });
+    // Free operation (price 0): the gateway proxies instead of returning 402.
+    // Nothing to sign — just make the real call with the intended method + body.
     if (res.status !== 402) {
-      return { ok: false, error: `Capability is not payable (got ${res.status}).` };
+      const direct = await fetch(url, {
+        method,
+        cache: "no-store",
+        ...(hasBody ? { body: input.body, headers: bodyInit.headers } : {}),
+      });
+      const body = await direct.text();
+      if (!direct.ok) {
+        return { ok: false, status: direct.status, body, error: friendlyError(direct.status) };
+      }
+      return { ok: true, status: direct.status, body, paid: "0" };
     }
     const body = (await res.json()) as { accepts: Requirement[] };
     if (!body.accepts?.[0]) return { ok: false, error: "Invalid payment challenge." };
@@ -145,11 +177,13 @@ export async function runCapability(input: { agentId: string; slug: string }): P
     return { ok: false, error: "Could not sign the payment (is the wallet funded?)." };
   }
 
-  // 5. Retry the call with the payment proof.
+  // 5. Retry the call with the payment proof (forwarding the method + body).
   try {
-    const res = await fetch(`${API_URL}/c/${input.slug}`, {
-      headers: { "X-PAYMENT": xPayment },
+    const res = await fetch(url, {
+      method,
+      headers: { "X-PAYMENT": xPayment, ...bodyInit.headers },
       cache: "no-store",
+      ...(hasBody ? { body: input.body } : {}),
     });
     const body = await res.text();
     if (!res.ok) {

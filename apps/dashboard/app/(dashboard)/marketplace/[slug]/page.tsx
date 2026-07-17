@@ -15,6 +15,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export const dynamic = "force-dynamic";
 
+/** URL-safe operation handle for `/c/<slug>/<op>` (mirrors the publish action). */
+function opSlug(name: string | undefined, i: number): string {
+  const base = (name ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return base || `op-${i + 1}`;
+}
+
 export default async function CapabilityDetailPage({
   params,
 }: {
@@ -29,6 +40,13 @@ export default async function CapabilityDetailPage({
   const meta = kindMeta(capability.kind);
   const Icon = meta.icon;
   const operations = capability.spec.operations ?? [];
+  const runOp = (op: (typeof operations)[number], i: number) => ({
+    slug: op.slug || opSlug(op.name, i),
+    name: op.name || `Request ${i + 1}`,
+    price: formatPrice(op.price),
+    method: op.method || "GET",
+    body: op.sampleRequest ?? "",
+  });
   const contact = capability.contact;
   const contactHref = contact
     ? contact.startsWith("http")
@@ -68,6 +86,7 @@ export default async function CapabilityDetailPage({
             slug={capability.slug}
             price={formatPrice(capability.price)}
             agents={agentOptions}
+            operation={operations.length > 0 ? runOp(operations[0]!, 0) : undefined}
           />
           <UseCapabilityDialog
             endpoint={`${API_URL}/c/${capability.slug}`}
@@ -162,12 +181,27 @@ export default async function CapabilityDetailPage({
                   ) : null}
                   <span className="font-medium">{op.name || `Request ${i + 1}`}</span>
                   <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-                    /{capability.slug}
+                    /{capability.slug}/{op.slug || opSlug(op.name, i)}
                   </code>
-                  <span className="ml-auto text-sm font-semibold">
-                    ${formatPrice(op.price)}
-                    <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
+                  <span className="ml-auto text-sm font-semibold tabular-nums">
+                    {Number(op.price) > 0 ? (
+                      <>
+                        ${formatPrice(op.price)}
+                        <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
+                      </>
+                    ) : (
+                      <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                        Free
+                      </span>
+                    )}
                   </span>
+                  <RunCapabilityDialog
+                    slug={capability.slug}
+                    price={formatPrice(op.price)}
+                    agents={agentOptions}
+                    operation={runOp(op, i)}
+                    trigger="compact"
+                  />
                 </div>
                 {op.sampleRequest || op.sampleResponse ? (
                   <div className="grid gap-4 md:grid-cols-2">

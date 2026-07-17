@@ -20,21 +20,38 @@ import type { AgentOption } from "./queries";
  * actually pay (enough balance, within their per-call cap) are offered. Motion
  * follows the design rules: ease-out entrances, press feedback, a fast loader.
  */
+/** A specific priced operation to run (e.g. one MCP tool), when a capability
+ *  exposes several. Omit to run the base capability. */
+export interface RunOperation {
+  slug: string;
+  name: string;
+  price: string;
+  method?: string;
+  body?: string;
+}
+
 export function RunCapabilityDialog({
   slug,
   price,
   agents,
+  operation,
+  trigger = "default",
 }: {
   slug: string;
   price: string;
   agents: AgentOption[];
+  operation?: RunOperation;
+  /** "default" = the header "Run with card" button; "compact" = a small per-row Run. */
+  trigger?: "default" | "compact";
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<RunResult | null>(null);
   const [query, setQuery] = useState("");
 
-  const priceNum = Number(price);
+  const runPrice = operation ? operation.price : price;
+  const runLabel = operation?.name;
+  const priceNum = Number(runPrice);
 
   // Only agents that can actually pay for this call.
   const eligible = useMemo(
@@ -63,19 +80,38 @@ export function RunCapabilityDialog({
   function run() {
     setResult(null);
     startTransition(async () => {
-      setResult(await runCapability({ agentId: selectedId, slug }));
+      setResult(
+        await runCapability({
+          agentId: selectedId,
+          slug,
+          operation: operation?.slug,
+          method: operation?.method,
+          body: operation?.body,
+        }),
+      );
     });
   }
 
   return (
     <>
-      <Button
-        variant="outline"
-        onClick={() => setOpen(true)}
-        className="transition-transform duration-100 ease-out active:scale-[0.97]"
-      >
-        <Play className="h-4 w-4" /> Run with card
-      </Button>
+      {trigger === "compact" ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOpen(true)}
+          className="transition-transform duration-100 ease-out active:scale-[0.97]"
+        >
+          <Play className="h-3.5 w-3.5" /> Run
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          onClick={() => setOpen(true)}
+          className="transition-transform duration-100 ease-out active:scale-[0.97]"
+        >
+          <Play className="h-4 w-4" /> Run with card
+        </Button>
+      )}
 
       <Dialog
         open={open}
@@ -86,10 +122,10 @@ export function RunCapabilityDialog({
       >
         <DialogContent className="max-w-md overflow-hidden">
           <DialogHeader className="min-w-0">
-            <DialogTitle>Run with a card</DialogTitle>
+            <DialogTitle>{runLabel ? `Run ${runLabel}` : "Run with a card"}</DialogTitle>
             <DialogDescription>
-              Your card pays ${price} in USDC and returns the result. Nothing exceeds the caps you
-              set.
+              Your card pays ${runPrice} in USDC and returns the result. Nothing exceeds the caps
+              you set.
             </DialogDescription>
           </DialogHeader>
 
@@ -101,7 +137,7 @@ export function RunCapabilityDialog({
             />
           ) : eligible.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-              No card can pay ${price} for this call.
+              No card can pay ${runPrice} for this call.
               <br />
               <a
                 href="/agents"
@@ -163,7 +199,7 @@ export function RunCapabilityDialog({
 
               <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2.5 text-sm">
                 <span className="text-muted-foreground">This call costs</span>
-                <span className="font-semibold tabular-nums">${price} USDC</span>
+                <span className="font-semibold tabular-nums">${runPrice} USDC</span>
               </div>
 
               {result?.error ? (
