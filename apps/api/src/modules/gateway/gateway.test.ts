@@ -212,6 +212,31 @@ describe("capability gateway", () => {
     expect(upstream.mock.calls[0]?.[0]).toBe("https://api.example.com/age/premium");
   });
 
+  it("substitutes the {payer} token in the upstream URL with the caller's address", async () => {
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    // A per-caller capability: its upstream references the paying agent.
+    const perCaller: ServableCapability = {
+      ...CAPABILITY,
+      upstreamUrl: "https://api.example.com/agent/{payer}/available-credit",
+      operations: [],
+    };
+    const { container } = buildContainer(perCaller);
+    const app = createServer(container);
+    await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    // {payer} is replaced with the verified payer (never a literal token).
+    const calledUrl = String(upstream.mock.calls[0]?.[0]);
+    expect(calledUrl).not.toContain("{payer}");
+    expect(calledUrl).toMatch(
+      /^https:\/\/api\.example\.com\/agent\/mock_payer_.+\/available-credit$/,
+    );
+  });
+
   it("proxies to the upstream and records the payment when paid", async () => {
     const upstream = vi.fn<typeof fetch>(
       async () =>
