@@ -1,8 +1,8 @@
 {
   "name": "@tael/sdk",
-  "version": "0.0.0",
+  "version": "0.1.1",
   "type": "module",
-  "description": "Wrap any HTTP handler with x402 payments in one call: tael({ price, handler }).",
+  "description": "The Tael SDK: call any capability with one API key, or wrap your own service with x402 payments in one line.",
   "license": "MIT",
   "keywords": [
     "tael",
@@ -12,6 +12,12 @@
     "stellar",
     "usdc"
   ],
+  "homepage": "https://taelprotocol.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahulsainlll/tael-protocol.git",
+    "directory": "packages/sdk"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",
@@ -26,6 +32,7 @@
       }
     }
   },
+  "sideEffects": false,
   "files": [
     "dist"
   ],
@@ -36,11 +43,12 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@tael/payments": "workspace:*",
-    "@tael/types": "workspace:*"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@tael/config": "workspace:*",
+    "@tael/payments": "workspace:*",
+    "@tael/types": "workspace:*",
     "@types/node": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",
