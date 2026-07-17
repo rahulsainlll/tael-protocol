@@ -468,16 +468,19 @@ importers:
 
   packages/sdk:
     dependencies:
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      '@tael/config':
+        specifier: workspace:*
+        version: link:../config
       '@tael/payments':
         specifier: workspace:*
         version: link:../payments
       '@tael/types':
         specifier: workspace:*
         version: link:../types
-    devDependencies:
-      '@tael/config':
-        specifier: workspace:*
-        version: link:../config
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.0
