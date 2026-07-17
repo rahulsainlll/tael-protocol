@@ -11,6 +11,8 @@ const testEnv: Env = {
   STELLAR_HORIZON_URL: "https://horizon-testnet.stellar.org",
   USDC_ISSUER: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
   TAEL_FEE_BPS: 100,
+  RATE_LIMIT_WINDOW_MS: 60000,
+  RATE_LIMIT_MAX: 120,
 };
 
 const app = createServer(createContainer(testEnv));

@@ -2,11 +2,12 @@ import { tael } from "@tael/sdk";
 import { PAYMENT_REQUEST_HEADER, splitFee } from "@tael/payments";
 import { type Container } from "../../container";
 import { proxyToUpstream, isBlockedUrl, resolveUpstreamUrl } from "./upstream";
+import { checkRateLimit } from "./rate-limit";
 
 /** The slice of the container the gateway needs. */
 export type GatewayDeps = Pick<
   Container,
-  "capabilities" | "payments" | "verifier" | "gateway" | "keys"
+  "capabilities" | "payments" | "verifier" | "gateway" | "keys" | "limiter"
 >;
 
 function json(body: unknown, status: number): Response {
@@ -29,9 +30,12 @@ function parseTaelKey(header: string | null): string | null {
  * pick and call one — no upstream URLs, no secrets.
  */
 export async function handleCatalogRequest(
-  deps: Pick<GatewayDeps, "capabilities">,
+  deps: Pick<GatewayDeps, "capabilities" | "limiter">,
   request: Request,
 ): Promise<Response> {
+  const rateLimitResponse = await checkRateLimit(deps.limiter, request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const url = new URL(request.url);
   const limitParam = url.searchParams.get("limit");
   const items = await deps.capabilities.listCatalog({
@@ -57,6 +61,9 @@ export async function handleGatewayRequest(
   request: Request,
   operationSlug?: string,
 ): Promise<Response> {
+  const rateLimitResponse = await checkRateLimit(deps.limiter, request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const capability = await deps.capabilities.findServableBySlug(slug);
   if (!capability) {
     return json({ error: "Capability not found" }, 404);

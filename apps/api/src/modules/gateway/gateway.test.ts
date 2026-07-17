@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { InMemoryRateLimiter } from "./rate-limit";
+
+const testRateLimiter = new InMemoryRateLimiter(60000, 120);
 import {
   createMockVerifier,
   encodePaymentPayload,
@@ -105,6 +108,7 @@ function buildContainer(
     capabilities: fakeCapabilities(capability),
     keys,
     verifier: createMockVerifier(),
+    limiter: testRateLimiter,
     gateway: {
       issuer: ADDRESS,
       network: "stellar-testnet",
@@ -127,6 +131,7 @@ function paymentHeader(): string {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  testRateLimiter.reset();
 });
 
 describe("capability gateway", () => {
@@ -547,5 +552,94 @@ describe("capability gateway", () => {
       result += decoder.decode(value, { stream: true });
     }
     expect(result).toBe("chunk1chunk2");
+  });
+
+  describe("gateway rate limiting", () => {
+    it("allows requests within the configured rate limit", async () => {
+      testRateLimiter.reset(60000, 2);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      // Call 1
+      let res = await app.request("/capabilities");
+      expect(res.status).toBe(200);
+
+      // Call 2
+      res = await app.request("/capabilities");
+      expect(res.status).toBe(200);
+    });
+
+    it("returns 429 Too Many Requests with Retry-After when limit is exceeded", async () => {
+      testRateLimiter.reset(60000, 2);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      // Call 1
+      let res = await app.request("/capabilities");
+      expect(res.status).toBe(200);
+
+      // Call 2
+      res = await app.request("/capabilities");
+      expect(res.status).toBe(200);
+
+      // Call 3 -> Exceeded!
+      res = await app.request("/capabilities");
+      expect(res.status).toBe(429);
+      expect(await res.json()).toEqual({ error: "Rate limit exceeded" });
+      expect(res.headers.get("Retry-After")).toBeTruthy();
+      expect(Number(res.headers.get("Retry-After"))).toBeGreaterThanOrEqual(1);
+    });
+
+    it("limits different IP addresses independently", async () => {
+      testRateLimiter.reset(60000, 1);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      // IP 1: Call 1 -> OK
+      let res = await app.request("/capabilities", {
+        headers: { "x-forwarded-for": "1.1.1.1" },
+      });
+      expect(res.status).toBe(200);
+
+      // IP 1: Call 2 -> 429
+      res = await app.request("/capabilities", {
+        headers: { "x-forwarded-for": "1.1.1.1" },
+      });
+      expect(res.status).toBe(429);
+
+      // IP 2: Call 1 -> OK (different IP is independent)
+      res = await app.request("/capabilities", {
+        headers: { "x-forwarded-for": "2.2.2.2" },
+      });
+      expect(res.status).toBe(200);
+    });
+
+    it("limits different API keys independently", async () => {
+      testRateLimiter.reset(60000, 1);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      // Key 1: Call 1 -> OK
+      let res = await app.request("/capabilities", {
+        headers: { authorization: "Bearer tael_live_key1" },
+      });
+      expect(res.status).toBe(200);
+
+      // Key 1: Call 2 -> 429
+      res = await app.request("/capabilities", {
+        headers: { authorization: "Bearer tael_live_key1" },
+      });
+      expect(res.status).toBe(429);
+
+      // Key 2: Call 1 -> OK (different Key is independent)
+      res = await app.request("/capabilities", {
+        headers: { authorization: "Bearer tael_live_key2" },
+      });
+      expect(res.status).toBe(200);
+    });
   });
 });
