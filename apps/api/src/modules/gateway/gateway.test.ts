@@ -43,6 +43,7 @@ const CAPABILITY: ServableCapability = {
   payTo: ADDRESS,
   upstreamUrl: "https://api.example.com/age",
   upstreamSecretEnc: null,
+  upstreamAuth: { scheme: "bearer" },
   operations: [
     { slug: "premium", path: "/premium", price: "0.05" },
     { slug: "ping", path: "/ping", price: "0" },
@@ -421,5 +422,87 @@ describe("capability gateway", () => {
     const ledger = await payments.list();
     expect(ledger).toHaveLength(1);
     expect(ledger[0]).toMatchObject({ amount: "0.02", fee: "0", status: "settled" });
+  });
+
+  it("proxies with custom header authentication scheme", async () => {
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    const customCapability: ServableCapability = {
+      ...CAPABILITY,
+      upstreamSecretEnc: "encrypted-key",
+      upstreamAuth: {
+        scheme: "header",
+        header: "x-api-key",
+        extraHeaders: { "anthropic-version": "2023-06-01" },
+      },
+    };
+
+    const { container } = buildContainer(customCapability);
+    const app = createServer(container);
+
+    await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    expect(upstream).toHaveBeenCalledOnce();
+    const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(forwarded.headers);
+    expect(headers.get("x-api-key")).toBe("TEST-CARD-SECRET");
+    expect(headers.get("anthropic-version")).toBe("2023-06-01");
+    expect(headers.has("authorization")).toBe(false);
+  });
+
+  it("proxies with bearer authentication scheme as default/fallback", async () => {
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    const bearerCapability: ServableCapability = {
+      ...CAPABILITY,
+      upstreamSecretEnc: "encrypted-key",
+      upstreamAuth: { scheme: "bearer" },
+    };
+
+    const { container } = buildContainer(bearerCapability);
+    const app = createServer(container);
+
+    await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    expect(upstream).toHaveBeenCalledOnce();
+    const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(forwarded.headers);
+    expect(headers.get("authorization")).toBe("Bearer TEST-CARD-SECRET");
+  });
+
+  it("proxies with none authentication scheme (no secret injected)", async () => {
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    const noneCapability: ServableCapability = {
+      ...CAPABILITY,
+      upstreamSecretEnc: "encrypted-key",
+      upstreamAuth: {
+        scheme: "none",
+        extraHeaders: { "x-static-only": "yes" },
+      },
+    };
+
+    const { container } = buildContainer(noneCapability);
+    const app = createServer(container);
+
+    await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    expect(upstream).toHaveBeenCalledOnce();
+    const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(forwarded.headers);
+    expect(headers.has("authorization")).toBe(false);
+    expect(headers.get("x-static-only")).toBe("yes");
   });
 });

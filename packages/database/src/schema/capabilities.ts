@@ -49,6 +49,15 @@ export interface CapabilitySpec {
   operations?: CapabilityOperation[];
 }
 
+export interface UpstreamAuth {
+  /** How to send the stored secret. */
+  scheme: "bearer" | "header" | "none";
+  /** Header name when scheme = "header", e.g. "x-api-key". */
+  header?: string;
+  /** Static headers always sent to the upstream, e.g. { "anthropic-version": "2023-06-01" }. */
+  extraHeaders?: Record<string, string>;
+}
+
 /**
  * A published capability: a developer wraps an upstream service (API/MCP/agent)
  * and sells it per call. This is the core reason Tael needs a database — the
@@ -88,6 +97,8 @@ export const capabilities = pgTable(
     upstreamUrl: text("upstream_url").notNull(),
     /** Encrypted upstream credential (e.g. the dev's Anthropic key). Never raw. */
     upstreamSecretEnc: text("upstream_secret_enc"),
+    /** Upstream authentication scheme configuration. Nullable (defaults to Bearer). */
+    upstreamAuth: jsonb("upstream_auth").$type<UpstreamAuth>(),
 
     publisherId: uuid("publisher_id")
       .notNull()
