@@ -41,7 +41,8 @@ hand to the Tael team.
    - a suggested price per call in USDC, with a short reason
 4. Flag anything that does not fit a plain paid HTTP endpoint, such as streaming, stateful sessions,
    MCP over HTTP, or on-chain signing, and suggest how to adapt it.
-5. Ask me for my Stellar payout address, which is where the USDC will settle.
+5. Ask me for my Stellar payout address, and remind me it must hold a USDC trustline for Tael's
+   issuer (shown on the publish form) or payments will be rejected on-chain.
 
 ## Output
 Return the completed manifest as a table, followed by a short note on anything that needs a custom
@@ -121,9 +122,18 @@ const result = await tael.post("your-product", { ...input });`}
           <strong>A price per call</strong> in USDC, where fractions of a cent are perfectly fine.
         </li>
         <li>
-          <strong>A Stellar payout address</strong> where your earnings land.
+          <strong>A Stellar payout address</strong> where your earnings land. It must hold a{" "}
+          <strong>USDC trustline for Tael&apos;s issuer</strong> (see below), or payments are
+          rejected on-chain.
         </li>
       </Ul>
+      <Callout>
+        <strong>Set up the USDC trustline first.</strong> Tael settles in USDC from a specific
+        issuer, and Stellar will reject a payment to an account that doesn&apos;t trust that asset (
+        <Code>op_no_trust</Code>). Before you publish, add a USDC trustline to your payout wallet
+        for Tael&apos;s issuer &mdash; the exact issuer address is shown on the publish form, next
+        to the pay-to field. This is a one-time transaction on your side.
+      </Callout>
       <Callout>
         Streaming, stateful sessions, and on-chain signing do not fit the plain request and response
         model out of the box, but they are supported through a custom adapter. Note them in your
