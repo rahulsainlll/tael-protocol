@@ -85,6 +85,13 @@
       "when": 1784278613019,
       "tag": "0011_sleepy_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784303696530,
+      "tag": "0012_perpetual_the_leader",
+      "breakpoints": true
     }
   ]
 }

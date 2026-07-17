@@ -3,7 +3,7 @@ import { moneyAmountSchema } from "./money";
 import { stellarAddressSchema } from "./wallet";
 
 /** The kinds of purchasable capabilities an agent can consume. */
-export const capabilityKindSchema = z.enum(["api", "mcp", "agent", "model", "dataset"]);
+export const capabilityKindSchema = z.enum(["api", "mcp", "agent", "model", "dataset", "credit"]);
 export type CapabilityKind = z.infer<typeof capabilityKindSchema>;
 
 export const capabilitySchema = z.object({

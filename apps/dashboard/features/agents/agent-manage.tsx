@@ -27,12 +27,14 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
   const [name, setName] = useState(agent.name);
   const [maxPerCall, setMaxPerCall] = useState(agent.policy?.maxPerCall ?? "0.10");
   const [dailyLimit, setDailyLimit] = useState(agent.policy?.dailyLimit ?? "5.00");
+  const [allowCreditDraw, setAllowCreditDraw] = useState(agent.policy?.allowCreditDraw ?? false);
   const [saved, setSaved] = useState(false);
 
   const dirty =
     name !== agent.name ||
     maxPerCall !== (agent.policy?.maxPerCall ?? "") ||
-    dailyLimit !== (agent.policy?.dailyLimit ?? "");
+    dailyLimit !== (agent.policy?.dailyLimit ?? "") ||
+    allowCreditDraw !== (agent.policy?.allowCreditDraw ?? false);
 
   async function copyAddress() {
     try {
@@ -57,7 +59,12 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const res = await updateAgent(agent.agentId, { name, maxPerCall, dailyLimit });
+      const res = await updateAgent(agent.agentId, {
+        name,
+        maxPerCall,
+        dailyLimit,
+        allowCreditDraw,
+      });
       if (res.ok) {
         setSaved(true);
         router.refresh();
@@ -142,6 +149,23 @@ export function AgentManage({ agent }: { agent: AgentWallet }) {
               <Input value={dailyLimit} onChange={(e) => setDailyLimit(e.target.value)} />
             </Field>
           </div>
+
+          <label className="flex items-start justify-between gap-4 rounded-lg border p-3">
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">Allow credit draw</span>
+              <span className="block text-xs text-muted-foreground">
+                When this card is short on USDC, let it borrow the shortfall from a TrustLine credit
+                line instead of failing. Stays within the caps above.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={allowCreditDraw}
+              onChange={(e) => setAllowCreditDraw(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
+            />
+          </label>
+
           <div className="flex items-center gap-3">
             <Button onClick={save} disabled={pending || !dirty || !name.trim()}>
               {pending ? "Saving…" : "Save changes"}

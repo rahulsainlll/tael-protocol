@@ -165,7 +165,7 @@ place. This is the correct integration point, not a workaround.
 1. **`TRUSTLINE_API` env var** — deployment-wide. Unset ⇒ the whole feature is
    dormant.
 2. **`policy.allowCreditDraw` per agent** — the wallet owner's explicit consent
-   for *this specific agent* to take on debt autonomously. This is a new
+   for _this specific agent_ to take on debt autonomously. This is a new
    optional boolean on the existing `SpendingPolicy` (`@tael/types`), absent
    (⇒ off) for every existing agent and DB row. Surface it in the agent's
    policy editor as a simple toggle ("Allow this agent to draw TrustLine credit
@@ -192,7 +192,7 @@ place. This is the correct integration point, not a workaround.
   `allowCreditDraw` gate above.
 - **No change to spending-policy checks** (`maxPerCall`, `dailyLimit`) — those
   still run first and can still block a call outright. The credit draw only
-  ever covers a *balance* shortfall within limits already approved.
+  ever covers a _balance_ shortfall within limits already approved.
 - **Never makes a working call fail.** Every failure mode in the new path
   (`TRUSTLINE_API` unset, `allowCreditDraw` off, no credit line, insufficient
   limit, RPC error, TrustLine backend down) resolves to `false`, falling
@@ -229,7 +229,7 @@ ALTER TYPE "capability_kind" ADD VALUE 'credit';
 ```
 
 > After merging the schema change, re-run `pnpm --filter @tael/database
-> generate` so drizzle-kit produces a matching snapshot in
+generate` so drizzle-kit produces a matching snapshot in
 > `packages/database/drizzle/meta/` — this migration file was hand-written to
 > match the existing enum-addition pattern (see `0006_public_peter_quill.sql`
 > for precedent), not machine-generated, so double-check it against your own
@@ -303,7 +303,7 @@ labels + sample request/response:
 
 ### Why this kind doesn't need any gateway changes
 
-Every other kind's `upstreamUrl` is a *third party's* service that
+Every other kind's `upstreamUrl` is a _third party's_ service that
 `gateway.handler.ts`'s `proxyToUpstream()` proxies to after payment. A
 "credit" capability's upstream is **TrustLine's own read endpoint** — a
 genuinely ordinary, cheap, metered HTTP GET, no different in shape from any
@@ -363,7 +363,7 @@ const tl = new TrustLineAgent(YOUR_AGENT_WALLET_SECRET, {
 });
 
 await tl.onboard(); // register() + underwrite() in one call
-console.log(await tl.creditLine());          // { tier, limitUsdc, aprBps }
+console.log(await tl.creditLine()); // { tier, limitUsdc, aprBps }
 console.log(await tl.availableCreditUsdc()); // what it can actually draw right now
 ```
 

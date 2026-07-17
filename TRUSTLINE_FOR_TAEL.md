@@ -12,7 +12,7 @@ wallet is short** — and turns the money it earns on Tael into a credit line.
 ## What breaks today, and what we fix
 
 Right now, if an agent tries to call a capability it can't afford, Tael stops
-it: *"Not enough USDC. Fund it first."* The agent stalls until a human tops it
+it: _"Not enough USDC. Fund it first."_ The agent stalls until a human tops it
 up. For an autonomous agent, that's a dead end.
 
 With TrustLine, that same agent can **borrow the shortfall on the spot**, pay,
