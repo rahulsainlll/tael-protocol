@@ -30,13 +30,19 @@ export interface PaymentsData {
   activity: ActivityRow[];
 }
 
-/** Stellar addresses of the user's agent wallets (what "spent" is measured against). */
-async function myWalletAddresses(userId: string): Promise<string[]> {
+/**
+ * Every Stellar address that counts as "the user" for spending: their card
+ * (agent) hot wallets plus their connected login wallet. A payment from any of
+ * these is money they spent, so all must be matched or the feed misses some.
+ */
+async function myWalletAddresses(userId: string, connectedAddress?: string): Promise<string[]> {
   const rows = await db
     .select({ address: wallets.address })
     .from(wallets)
     .where(eq(wallets.ownerId, userId));
-  return rows.map((r) => r.address);
+  const addresses = new Set(rows.map((r) => r.address));
+  if (connectedAddress) addresses.add(connectedAddress);
+  return [...addresses];
 }
 
 /**
@@ -65,13 +71,16 @@ export async function getPaymentsData(): Promise<PaymentsData> {
     .orderBy(desc(paymentsTable.createdAt))
     .limit(50);
 
-  // Spending: payments made by any of the user's wallets.
-  const addresses = await myWalletAddresses(user.id);
+  // Spending: payments made by any of the user's wallets (cards + login wallet).
+  const addresses = await myWalletAddresses(user.id, user.walletAddress);
   const spentRows = addresses.length
     ? await db
         .select({
           id: paymentsTable.id,
+          // Prefer the capability's current name; fall back to the name saved on
+          // the payment (survives deletion) so history never shows a blank.
           capability: capabilities.name,
+          capabilitySnapshot: paymentsTable.capabilityName,
           counterparty: paymentsTable.payee,
           amount: paymentsTable.amount,
           fee: paymentsTable.fee,
@@ -106,7 +115,7 @@ export async function getPaymentsData(): Promise<PaymentsData> {
     return {
       id: `out-${r.id}`,
       direction: "spent" as const,
-      capability: r.capability ?? "Capability",
+      capability: r.capability ?? r.capabilitySnapshot ?? "Capability",
       counterparty: r.counterparty,
       amount: total.toDecimalString(),
       status: r.status,

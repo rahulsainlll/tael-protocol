@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ADD COLUMN "capability_name" text;

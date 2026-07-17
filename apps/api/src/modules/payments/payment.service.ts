@@ -10,6 +10,7 @@ export class PaymentService {
     const payment: Payment = {
       id: crypto.randomUUID(),
       capabilityId: input.capabilityId,
+      capabilityName: null,
       payer: input.payer,
       payee: input.payee,
       amount: input.amount,
@@ -28,6 +29,7 @@ export class PaymentService {
    */
   async recordSettled(input: {
     capabilityId: string;
+    capabilityName?: string | null;
     payer: string;
     payee: string;
     amount: string;
@@ -37,6 +39,7 @@ export class PaymentService {
     const payment: Payment = {
       id: crypto.randomUUID(),
       capabilityId: input.capabilityId,
+      capabilityName: input.capabilityName ?? null,
       payer: input.payer,
       payee: input.payee,
       amount: input.amount,

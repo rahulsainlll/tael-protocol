@@ -138,6 +138,7 @@ export async function handleGatewayRequest(
       try {
         await deps.payments.recordSettled({
           capabilityId: capability.id,
+          capabilityName: capability.name,
           payer: receipt.payer,
           payee: capability.payTo,
           amount: split.net,
