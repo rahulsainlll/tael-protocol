@@ -25,7 +25,7 @@ import { CapabilityLogo } from "./capability-logo";
 import { LogoField } from "./logo-field";
 import { HTTP_METHODS, kindFields } from "./kind-fields";
 
-const KINDS = ["api", "mcp", "agent", "model", "dataset"] as const;
+const KINDS = ["api", "mcp", "agent", "model", "dataset", "credit"] as const;
 type Kind = (typeof KINDS)[number];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
