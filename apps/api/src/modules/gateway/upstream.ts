@@ -1,5 +1,7 @@
+import { createHmac } from "crypto";
 import { decryptSecret } from "@tael/database";
 import { type ServableCapability } from "../capabilities/capability.repository";
+import { env } from "../../env";
 
 /** How long we wait on the upstream before giving up. */
 const UPSTREAM_TIMEOUT_MS = 30_000;
@@ -55,6 +57,7 @@ export async function proxyToUpstream(
   capability: ServableCapability,
   request: Request,
   targetUrl: string = capability.upstreamUrl,
+  agentAddress?: string,
 ): Promise<Response> {
   const headers = new Headers();
   request.headers.forEach((value, key) => {
@@ -76,6 +79,20 @@ export async function proxyToUpstream(
   if (auth.extraHeaders) {
     for (const [key, value] of Object.entries(auth.extraHeaders)) {
       headers.set(key, value);
+    }
+  }
+
+  if (agentAddress) {
+    headers.set("x-tael-agent", agentAddress);
+    const partnerSecret = env.PARTNER_HMAC_SECRET;
+    if (partnerSecret) {
+      const ts = Date.now();
+      const hmac = createHmac("sha256", partnerSecret);
+      hmac.update(`${ts}.${agentAddress}`);
+      const sig = hmac.digest("hex");
+
+      headers.set("x-tael-timestamp", String(ts));
+      headers.set("x-tael-agent-sig", sig);
     }
   }
 

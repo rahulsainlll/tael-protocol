@@ -1,4 +1,6 @@
+import { createHmac } from "crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { env } from "../../env";
 import { InMemoryRateLimiter } from "./rate-limit";
 
 const testRateLimiter = new InMemoryRateLimiter(60000, 120);
@@ -552,6 +554,103 @@ describe("capability gateway", () => {
       result += decoder.decode(value, { stream: true });
     }
     expect(result).toBe("chunk1chunk2");
+  });
+
+  describe("paying agent identity forwarding", () => {
+    afterEach(() => {
+      env.PARTNER_HMAC_SECRET = undefined;
+    });
+
+    it("sends x-tael-agent with the payer address to the upstream on a paid call", async () => {
+      const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", upstream);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      await app.request("/c/predict-age", {
+        method: "POST",
+        headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+      });
+
+      expect(upstream).toHaveBeenCalledOnce();
+      const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+      const headers = new Headers(forwarded.headers);
+
+      expect(headers.has("x-tael-agent")).toBe(true);
+      expect(headers.get("x-tael-agent")).toBeTruthy();
+    });
+
+    it("does not send x-tael-agent on a free operation call", async () => {
+      const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", upstream);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      await app.request("/c/predict-age/ping");
+
+      expect(upstream).toHaveBeenCalledOnce();
+      const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+      const headers = new Headers(forwarded.headers);
+      expect(headers.has("x-tael-agent")).toBe(false);
+    });
+
+    it("attaches signature and timestamp headers when PARTNER_HMAC_SECRET is configured", async () => {
+      const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", upstream);
+
+      const secret = "my-secret-key";
+      env.PARTNER_HMAC_SECRET = secret;
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      await app.request("/c/predict-age", {
+        method: "POST",
+        headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+      });
+
+      expect(upstream).toHaveBeenCalledOnce();
+      const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+      const headers = new Headers(forwarded.headers);
+
+      const agent = headers.get("x-tael-agent");
+      const ts = headers.get("x-tael-timestamp");
+      const sig = headers.get("x-tael-agent-sig");
+
+      expect(agent).toBeTruthy();
+      expect(ts).toBeTruthy();
+      expect(sig).toBeTruthy();
+
+      const hmac = createHmac("sha256", secret);
+      hmac.update(`${ts}.${agent}`);
+      const expectedSig = hmac.digest("hex");
+      expect(sig).toBe(expectedSig);
+    });
+
+    it("does not attach signature and timestamp headers when PARTNER_HMAC_SECRET is unset", async () => {
+      const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", upstream);
+
+      env.PARTNER_HMAC_SECRET = undefined;
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      await app.request("/c/predict-age", {
+        method: "POST",
+        headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+      });
+
+      expect(upstream).toHaveBeenCalledOnce();
+      const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+      const headers = new Headers(forwarded.headers);
+
+      expect(headers.get("x-tael-agent")).toBeTruthy();
+      expect(headers.has("x-tael-timestamp")).toBe(false);
+      expect(headers.has("x-tael-agent-sig")).toBe(false);
+    });
   });
 
   describe("gateway rate limiting", () => {

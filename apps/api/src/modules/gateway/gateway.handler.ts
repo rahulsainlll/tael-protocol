@@ -157,7 +157,7 @@ export async function handleGatewayRequest(
       }
 
       try {
-        return await proxyToUpstream(capability, paidRequest, targetUrl);
+        return await proxyToUpstream(capability, paidRequest, targetUrl, receipt.payer);
       } catch (error) {
         console.error("[gateway] upstream call failed:", error);
         return json({ error: "Upstream call failed" }, 502);
