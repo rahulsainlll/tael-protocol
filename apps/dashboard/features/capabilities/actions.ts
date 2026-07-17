@@ -109,14 +109,25 @@ export async function publishCapability(
   const input = parsed.data;
 
   const faqs: CapabilityFaq[] = input.faqs.filter((f) => f.answer.trim().length > 0);
+  // Give each operation a URL-safe slug (from its name) so buyers can address it
+  // at /c/<slug>/<operation>; dedupe collisions with a numeric suffix.
+  const opSlugs = new Set<string>();
   const spec: CapabilitySpec = {
-    operations: input.operations.map((op) => ({
-      name: op.name || "Request",
-      method: op.method || undefined,
-      sampleRequest: op.sampleRequest || undefined,
-      sampleResponse: op.sampleResponse || undefined,
-      price: op.price,
-    })),
+    operations: input.operations.map((op, i) => {
+      const base = slugify(op.name || `op-${i + 1}`) || `op-${i + 1}`;
+      let opSlug = base;
+      for (let n = 2; opSlugs.has(opSlug); n += 1) opSlug = `${base}-${n}`;
+      opSlugs.add(opSlug);
+      return {
+        name: op.name || "Request",
+        slug: opSlug,
+        path: op.path || undefined,
+        method: op.method || undefined,
+        sampleRequest: op.sampleRequest || undefined,
+        sampleResponse: op.sampleResponse || undefined,
+        price: op.price,
+      };
+    }),
   };
   const slug = await uniqueSlug(slugify(input.name));
 

@@ -100,9 +100,14 @@ export class Tael {
     this.fetchImpl = f;
   }
 
-  /** Call a capability and return the full response (data + status + receipt). */
+  /**
+   * Call a capability and return the full response (data + status + receipt).
+   * `slug` may address a specific operation as `"capability/operation"`
+   * (e.g. `"nebula/swap"`), which is priced per operation.
+   */
   async call<T = unknown>(slug: string, options: CallOptions = {}): Promise<TaelResponse<T>> {
-    const url = new URL(`${this.baseUrl}/c/${encodeURIComponent(slug)}`);
+    const path = slug.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+    const url = new URL(`${this.baseUrl}/c/${path}`);
     for (const [k, v] of Object.entries(options.query ?? {})) url.searchParams.set(k, String(v));
 
     const headers: Record<string, string> = {

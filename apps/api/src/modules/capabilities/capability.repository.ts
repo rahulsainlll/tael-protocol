@@ -1,6 +1,16 @@
 import { and, capabilities, desc, eq, ilike, ne, or, type Database } from "@tael/database";
 import { TaelError } from "@tael/types";
 
+/** One callable operation of a capability, resolved for the gateway. */
+export interface ServableOperation {
+  /** URL-safe handle, addressed at `/c/<slug>/<opSlug>`. */
+  slug: string;
+  /** Path appended to the capability's upstreamUrl (empty = the base URL). */
+  path: string;
+  /** Price per call for this operation, decimal USDC string. */
+  price: string;
+}
+
 /**
  * The subset of a capability the gateway needs to serve and charge for a call.
  * Deliberately narrow — the gateway never needs the publisher, FAQs, or spec.
@@ -9,7 +19,7 @@ export interface ServableCapability {
   id: string;
   slug: string;
   name: string;
-  /** Headline price per call, decimal USDC string. */
+  /** Headline price per call, decimal USDC string (used for `/c/<slug>`). */
   price: string;
   /** Stellar address that receives settlement. */
   payTo: string;
@@ -17,6 +27,18 @@ export interface ServableCapability {
   upstreamUrl: string;
   /** Encrypted upstream API key (AES-256-GCM), or null if the upstream is open. */
   upstreamSecretEnc: string | null;
+  /** Priced operations, for `/c/<slug>/<op>`. Empty when the capability is flat. */
+  operations: ServableOperation[];
+}
+
+/** Lowercase, URL-safe slug from a name (mirrors the dashboard's slugify). */
+function opSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
 }
 
 /** A capability as a buyer discovers it in the public catalog. No secrets. */
@@ -81,6 +103,7 @@ export class DbCapabilityRepository implements CapabilityRepository {
         payTo: capabilities.payTo,
         upstreamUrl: capabilities.upstreamUrl,
         upstreamSecretEnc: capabilities.upstreamSecretEnc,
+        spec: capabilities.spec,
       })
       .from(capabilities)
       .where(
@@ -92,7 +115,13 @@ export class DbCapabilityRepository implements CapabilityRepository {
       )
       .limit(1);
 
-    return row ?? null;
+    if (!row) return null;
+    const operations: ServableOperation[] = (row.spec.operations ?? []).map((op) => ({
+      slug: op.slug ?? opSlug(op.name),
+      path: op.path ?? "",
+      price: op.price,
+    }));
+    return { ...row, operations };
   }
 
   async listCatalog(query: CatalogQuery = {}): Promise<CatalogCapability[]> {

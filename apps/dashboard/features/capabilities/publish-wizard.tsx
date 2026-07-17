@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Check,
   CheckCircle2,
+  ChevronDown,
   Copy,
   ExternalLink,
   FileText,
@@ -33,6 +34,7 @@ type Step = "describe" | "test" | "verify" | "done";
 type Answer = { question: string; answer: string };
 type Operation = {
   name: string;
+  path: string;
   method: string;
   sampleRequest: string;
   sampleResponse: string;
@@ -40,7 +42,51 @@ type Operation = {
 };
 
 function newOperation(): Operation {
-  return { name: "", method: "POST", sampleRequest: "", sampleResponse: "", price: "" };
+  return { name: "", path: "", method: "POST", sampleRequest: "", sampleResponse: "", price: "" };
+}
+
+/** Restrained HTTP-method tints (subtle, not the loud Swagger palette). */
+const METHOD_COLORS: Record<string, string> = {
+  GET: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
+  POST: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  PUT: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  PATCH: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  DELETE: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+};
+
+/** A small colored method chip for a request row. */
+function MethodBadge({ method }: { method: string }) {
+  const m = (method || "POST").toUpperCase();
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 shrink-0 items-center rounded-md px-2 font-mono text-[11px] font-semibold tracking-wide",
+        METHOD_COLORS[m] ?? "bg-muted text-muted-foreground",
+      )}
+    >
+      {m}
+    </span>
+  );
+}
+
+/** Price summary on a request row: a "Free" pill for 0, else "$X/call". */
+function PriceTag({ price }: { price: string }) {
+  if (!price.trim()) {
+    return <span className="shrink-0 text-xs text-muted-foreground">Set price</span>;
+  }
+  if (Number(price) <= 0) {
+    return (
+      <span className="shrink-0 rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+        Free
+      </span>
+    );
+  }
+  return (
+    <span className="shrink-0 text-xs font-medium tabular-nums">
+      ${price}
+      <span className="text-muted-foreground">/call</span>
+    </span>
+  );
 }
 
 export function PublishWizard() {
@@ -48,6 +94,18 @@ export function PublishWizard() {
   const [step, setStep] = useState<Step>("describe");
   const [kind, setKind] = useState<Kind>("api");
   const [operations, setOperations] = useState<Operation[]>([newOperation()]);
+  // Which request row is expanded for editing (accordion). -1 = all collapsed.
+  const [openOp, setOpenOp] = useState<number>(0);
+
+  function addOp() {
+    setOpenOp(operations.length); // open the row we're about to add
+    setOperations((prev) => [...prev, newOperation()]);
+  }
+
+  function removeOp(i: number) {
+    setOperations((prev) => prev.filter((_, j) => j !== i));
+    setOpenOp((cur) => (cur === i ? -1 : cur > i ? cur - 1 : cur));
+  }
   // Describe-step fields live in state (controlled) so they survive navigating
   // back and forth between steps instead of resetting.
   const [describe, setDescribe] = useState<Record<string, string>>({ visibility: "public" });
@@ -100,10 +158,12 @@ export function PublishWizard() {
     setError(null);
     setTestingIndex(i);
     const op = operations[i]!;
+    const base = describe.upstreamUrl ?? "";
+    const url = op.path ? `${base.replace(/\/+$/, "")}/${op.path.replace(/^\/+/, "")}` : base;
     startTransition(async () => {
       const res = await testRequest({
         name: op.name || `Request ${i + 1}`,
-        url: describe.upstreamUrl ?? "",
+        url,
         method: op.method || "POST",
         body: op.sampleRequest,
         secret: describe.upstreamSecret ?? "",
@@ -203,7 +263,7 @@ export function PublishWizard() {
             }}
             className="space-y-4"
           >
-            <Field label="Product name">
+            <Field label="Product name" required>
               <Input
                 value={describe.name ?? ""}
                 onChange={(e) => setField("name", e.target.value)}
@@ -212,7 +272,7 @@ export function PublishWizard() {
               />
             </Field>
 
-            <Field label="Logo (optional)">
+            <Field label="Logo">
               <LogoField
                 value={describe.logoUrl ?? ""}
                 kind={kind}
@@ -261,7 +321,7 @@ export function PublishWizard() {
               </select>
             </Field>
 
-            <Field label="Description">
+            <Field label="Description" required>
               <textarea
                 value={describe.description ?? ""}
                 onChange={(e) => setField("description", e.target.value)}
@@ -272,7 +332,7 @@ export function PublishWizard() {
               />
             </Field>
 
-            <Field label="Contact / support (optional)">
+            <Field label="Contact" hint="Where buyers can reach you about this capability.">
               <Input
                 value={describe.contact ?? ""}
                 onChange={(e) => setField("contact", e.target.value)}
@@ -280,7 +340,7 @@ export function PublishWizard() {
               />
             </Field>
 
-            <Field label={fields.urlLabel}>
+            <Field label={fields.urlLabel} required>
               <Input
                 value={describe.upstreamUrl ?? ""}
                 onChange={(e) => setField("upstreamUrl", e.target.value)}
@@ -290,12 +350,15 @@ export function PublishWizard() {
               />
             </Field>
 
-            <Field label="Upstream secret (encrypted at rest)">
+            <Field
+              label="Upstream secret"
+              hint="Your key for the endpoint above. We encrypt it and add it to every call, so buyers never see it."
+            >
               <Input
                 value={describe.upstreamSecret ?? ""}
                 onChange={(e) => setField("upstreamSecret", e.target.value)}
                 type="password"
-                placeholder="sk-… (optional)"
+                placeholder="sk-…"
               />
             </Field>
 
@@ -304,82 +367,140 @@ export function PublishWizard() {
                 <span className="text-sm font-medium">Requests</span>
                 <button
                   type="button"
-                  onClick={() => setOperations((prev) => [...prev, newOperation()])}
+                  onClick={addOp}
                   className="inline-flex items-center gap-1 text-sm font-medium text-foreground/80 hover:text-foreground"
                 >
                   <Plus className="h-4 w-4" /> Add request
                 </button>
               </div>
 
-              {operations.map((op, i) => (
-                <div key={i} className="space-y-3 rounded-xl border p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Request {i + 1}
-                    </span>
-                    {operations.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => setOperations((prev) => prev.filter((_, j) => j !== i))}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div
-                    className={cn(
-                      "grid gap-3",
-                      fields.method ? "grid-cols-[6rem_1fr_7rem]" : "grid-cols-[1fr_7rem]",
-                    )}
-                  >
-                    {fields.method ? (
-                      <Field label="Method">
-                        <select
-                          value={op.method}
-                          onChange={(e) => updateOp(i, { method: e.target.value })}
-                          className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              <div className="divide-y overflow-hidden rounded-xl border">
+                {operations.map((op, i) => {
+                  const open = openOp === i;
+                  return (
+                    <div key={i}>
+                      {/* Summary row — click to expand its editor. */}
+                      <div className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setOpenOp(open ? -1 : i)}
+                          className="flex min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-muted/40"
                         >
-                          {HTTP_METHODS.map((m) => (
-                            <option key={m} value={m}>
-                              {m}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    ) : null}
-                    <Field label="Label">
-                      <Input
-                        value={op.name}
-                        onChange={(e) => updateOp(i, { name: e.target.value })}
-                        placeholder="Extract text"
-                      />
-                    </Field>
-                    <Field label="Price/call">
-                      <Input
-                        value={op.price}
-                        onChange={(e) => updateOp(i, { price: e.target.value })}
-                        placeholder="0.02"
-                        required
-                      />
-                    </Field>
-                  </div>
+                          {fields.method ? <MethodBadge method={op.method} /> : null}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">
+                              {op.name || (
+                                <span className="text-muted-foreground">Untitled request</span>
+                              )}
+                            </span>
+                            {op.path ? (
+                              <span className="block truncate font-mono text-xs text-muted-foreground">
+                                {op.path}
+                              </span>
+                            ) : null}
+                          </span>
+                          <PriceTag price={op.price} />
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                              open && "rotate-180",
+                            )}
+                          />
+                        </button>
+                        {operations.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => removeOp(i)}
+                            aria-label="Remove request"
+                            className="px-3 text-muted-foreground transition-colors hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </div>
 
-                  <Field label={`${fields.requestLabel} (optional)`}>
-                    <textarea
-                      rows={4}
-                      value={op.sampleRequest}
-                      onChange={(e) => updateOp(i, { sampleRequest: e.target.value })}
-                      placeholder={fields.requestPlaceholder}
-                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs"
-                    />
-                  </Field>
-                </div>
-              ))}
+                      {/* Editor — revealed for the open row. */}
+                      {open ? (
+                        <div className="space-y-3 border-t bg-muted/20 px-3.5 py-4 duration-150 ease-out animate-in fade-in slide-in-from-top-1">
+                          <div
+                            className={cn(
+                              "grid gap-3",
+                              fields.method ? "grid-cols-[6rem_1fr_7rem]" : "grid-cols-[1fr_7rem]",
+                            )}
+                          >
+                            {fields.method ? (
+                              <Field label="Method">
+                                <select
+                                  value={op.method}
+                                  onChange={(e) => updateOp(i, { method: e.target.value })}
+                                  className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                                >
+                                  {HTTP_METHODS.map((m) => (
+                                    <option key={m} value={m}>
+                                      {m}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+                            ) : null}
+                            <Field label="Name">
+                              <Input
+                                value={op.name}
+                                onChange={(e) => updateOp(i, { name: e.target.value })}
+                                placeholder="Extract text"
+                              />
+                            </Field>
+                            <Field label="Price" required>
+                              <Input
+                                value={op.price}
+                                onChange={(e) => updateOp(i, { price: e.target.value })}
+                                placeholder="0.02"
+                                required
+                              />
+                            </Field>
+                          </div>
+
+                          <Field
+                            label="Path"
+                            hint="Added to the endpoint URL for this request. Leave empty to call the base URL."
+                          >
+                            <Input
+                              value={op.path}
+                              onChange={(e) => updateOp(i, { path: e.target.value })}
+                              placeholder="/swap"
+                            />
+                          </Field>
+
+                          <Field
+                            label={fields.requestLabel}
+                            hint="Shown on the listing and used to test this request."
+                          >
+                            <textarea
+                              rows={4}
+                              value={op.sampleRequest}
+                              onChange={(e) => updateOp(i, { sampleRequest: e.target.value })}
+                              placeholder={fields.requestPlaceholder}
+                              className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs"
+                            />
+                          </Field>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Set a price of <span className="font-medium text-foreground">0</span> to make a
+                request free.
+              </p>
             </div>
 
-            <Field label="Pay to (Stellar address)">
+            <Field
+              label="Pay to"
+              required
+              hint="The Stellar address that receives your USDC earnings."
+            >
               <Input
                 value={describe.payTo ?? ""}
                 onChange={(e) => setField("payTo", e.target.value)}
@@ -666,10 +787,26 @@ function StepIndicator({ step }: { step: Step }) {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium">
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </span>
+      {hint ? (
+        <span className="block text-xs leading-snug text-muted-foreground">{hint}</span>
+      ) : null}
       {children}
     </label>
   );

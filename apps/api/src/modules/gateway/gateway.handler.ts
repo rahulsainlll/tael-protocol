@@ -1,7 +1,7 @@
 import { tael } from "@tael/sdk";
 import { PAYMENT_REQUEST_HEADER, splitFee } from "@tael/payments";
 import { type Container } from "../../container";
-import { proxyToUpstream, isBlockedUrl } from "./upstream";
+import { proxyToUpstream, isBlockedUrl, resolveUpstreamUrl } from "./upstream";
 
 /** The slice of the container the gateway needs. */
 export type GatewayDeps = Pick<
@@ -55,15 +55,41 @@ export async function handleGatewayRequest(
   deps: GatewayDeps,
   slug: string,
   request: Request,
+  operationSlug?: string,
 ): Promise<Response> {
   const capability = await deps.capabilities.findServableBySlug(slug);
   if (!capability) {
     return json({ error: "Capability not found" }, 404);
   }
 
+  // Resolve the operation (if any): its own price and upstream path. A capability
+  // can expose many priced operations at `/c/<slug>/<op>`; `/c/<slug>` uses the
+  // headline price and the base URL, exactly as before.
+  let price = capability.price;
+  let targetUrl = capability.upstreamUrl;
+  if (operationSlug) {
+    const operation = capability.operations.find((o) => o.slug === operationSlug);
+    if (!operation) {
+      return json({ error: "Operation not found" }, 404);
+    }
+    price = operation.price;
+    targetUrl = resolveUpstreamUrl(capability.upstreamUrl, operation.path);
+  }
+
   // Never take payment for a call we won't be able to make.
-  if (isBlockedUrl(capability.upstreamUrl)) {
+  if (isBlockedUrl(targetUrl)) {
     return json({ error: "Capability upstream is unavailable" }, 502);
+  }
+
+  // Free operation (price 0): no payment gate at all — just proxy and return.
+  // Lets a capability mix free reads (balance, quote) with paid actions (swap).
+  if (Number(price) <= 0) {
+    try {
+      return await proxyToUpstream(capability, request, targetUrl);
+    } catch (error) {
+      console.error("[gateway] free upstream call failed:", error);
+      return json({ error: "Upstream call failed" }, 502);
+    }
   }
 
   // Take the marketplace fee out of the price (non-custodial: it's paid directly
@@ -72,7 +98,7 @@ export async function handleGatewayRequest(
     deps.gateway.feeAddress && deps.gateway.feeBps > 0
       ? { payTo: deps.gateway.feeAddress, bps: deps.gateway.feeBps }
       : undefined;
-  const split = splitFee(capability.price, fee ? deps.gateway.feeBps : 0);
+  const split = splitFee(price, fee ? deps.gateway.feeBps : 0);
 
   // API-key path: when the caller sends a Tael key (and hasn't already attached
   // a signed payment), authenticate it and auto-pay from its linked Card, within
@@ -89,7 +115,7 @@ export async function handleGatewayRequest(
     const legs = [{ to: capability.payTo, amount: split.net }];
     if (fee) legs.push({ to: fee.payTo, amount: split.fee });
 
-    const payment = await deps.keys.payForCall({ card: key.card, total: capability.price, legs });
+    const payment = await deps.keys.payForCall({ card: key.card, total: price, legs });
     if (!payment.ok) return json({ error: payment.error }, payment.status);
 
     const headers = new Headers(request.headers);
@@ -99,7 +125,7 @@ export async function handleGatewayRequest(
   }
 
   const paid = tael({
-    price: capability.price,
+    price,
     payTo: capability.payTo,
     issuer: deps.gateway.issuer,
     network: deps.gateway.network,
@@ -123,7 +149,7 @@ export async function handleGatewayRequest(
       }
 
       try {
-        return await proxyToUpstream(capability, paidRequest);
+        return await proxyToUpstream(capability, paidRequest, targetUrl);
       } catch (error) {
         console.error("[gateway] upstream call failed:", error);
         return json({ error: "Upstream call failed" }, 502);
