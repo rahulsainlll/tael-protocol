@@ -13,6 +13,7 @@ const testEnv: Env = {
   TAEL_FEE_BPS: 100,
   RATE_LIMIT_WINDOW_MS: 60000,
   RATE_LIMIT_MAX: 120,
+  PARTNER_HMAC_SECRET: undefined,
 };
 
 const app = createServer(createContainer(testEnv));
