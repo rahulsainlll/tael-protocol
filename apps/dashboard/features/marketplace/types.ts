@@ -33,4 +33,4 @@ export function toMarketplaceItem(capability: Capability): MarketplaceItem {
   };
 }
 
-export const capabilityKinds = ["api", "mcp", "agent", "model", "dataset"] as const;
+export const capabilityKinds = ["api", "mcp", "agent", "model", "dataset", "credit"] as const;

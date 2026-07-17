@@ -1,4 +1,12 @@
-import { Blocks, Bot, BrainCircuit, Braces, Database, type LucideIcon } from "lucide-react";
+import {
+  Blocks,
+  Bot,
+  BrainCircuit,
+  Braces,
+  Database,
+  Landmark,
+  type LucideIcon,
+} from "lucide-react";
 
 /** Icon + color styling per capability kind, for consistent, lively UI. */
 export interface KindMeta {
@@ -40,6 +48,15 @@ export const KIND_META: Record<string, KindMeta> = {
     label: "Dataset",
     badge: "bg-pink-500/10 text-pink-600 border-pink-500/20",
     tile: "bg-pink-500/10 text-pink-600",
+  },
+  // TrustLine's kind: a metered read against an underwriting API, not a
+  // third-party proxy — see TRUSTLINE_INTEGRATION.md for why this fits the
+  // existing per-call-price gateway model unmodified.
+  credit: {
+    icon: Landmark,
+    label: "Credit",
+    badge: "bg-teal-500/10 text-teal-600 border-teal-500/20",
+    tile: "bg-teal-500/10 text-teal-600",
   },
 };
 

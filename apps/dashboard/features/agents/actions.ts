@@ -134,12 +134,13 @@ const updateAgentSchema = z.object({
   name: nameSchema,
   maxPerCall: amountSchema,
   dailyLimit: amountSchema,
+  allowCreditDraw: z.boolean().optional(),
 });
 
 /** Update an agent's name and spending policy. Ownership-checked. */
 export async function updateAgent(
   agentId: string,
-  input: { name: string; maxPerCall: string; dailyLimit: string },
+  input: { name: string; maxPerCall: string; dailyLimit: string; allowCreditDraw?: boolean },
 ): Promise<{ ok: boolean; error?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
@@ -148,12 +149,15 @@ export async function updateAgent(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
-  const { name, maxPerCall, dailyLimit } = parsed.data;
+  const { name, maxPerCall, dailyLimit, allowCreditDraw } = parsed.data;
 
   try {
     await db
       .update(agents)
-      .set({ name, policy: { maxPerCall, dailyLimit, blockedPublishers: [] } })
+      .set({
+        name,
+        policy: { maxPerCall, dailyLimit, blockedPublishers: [], allowCreditDraw },
+      })
       .where(and(eq(agents.id, agentId), eq(agents.ownerId, user.id)));
   } catch (error) {
     console.error("[agents] update failed:", error);

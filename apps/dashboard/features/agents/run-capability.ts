@@ -18,6 +18,10 @@ import { fetchUsdcBalance } from "./balance";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const STELLAR_NETWORK = process.env.STELLAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
+// TrustLine underwriting API — https://github.com/TechnicallyKiller/TrustLine.
+// Unset (default) means no wallet has a credit line to draw against; the
+// balance check below then behaves exactly as it did before this change.
+const TRUSTLINE_API = process.env.TRUSTLINE_API;
 const HORIZON_URL = process.env.STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
 
 interface Requirement {
@@ -37,6 +41,32 @@ export interface RunResult {
   /** Total USDC the agent paid for this call. */
   paid?: string;
   error?: string;
+}
+
+/**
+ * Draw `shortfallUsdc` of TrustLine credit into this agent's own wallet, if
+ * (and only if) the agent already has a live TrustLine credit line — never
+ * registers or underwrites one on the fly, since that's a deliberate decision
+ * the wallet owner should take (see the SDK's `onboard()`), not something a
+ * single paid call should trigger implicitly. Best-effort: any failure
+ * (no TRUSTLINE_API configured, no credit line, insufficient limit, RPC error)
+ * just returns `false` and the caller falls through to the existing
+ * "not enough USDC" error — this can never make a call fail that would have
+ * succeeded anyway.
+ */
+async function tryDrawTrustLineCredit(secretEnc: string, shortfallUsdc: string): Promise<boolean> {
+  if (!TRUSTLINE_API) return false;
+  try {
+    const { TrustLineAgent } = await import("@trustline-agents/agent-sdk");
+    const tl = new TrustLineAgent(decryptSecret(secretEnc), { apiBaseUrl: TRUSTLINE_API });
+    const available = await tl.availableCreditUsdc();
+    if (available < Number(shortfallUsdc)) return false;
+    await tl.borrow(Number(shortfallUsdc));
+    return true;
+  } catch (error) {
+    console.error("[run] TrustLine credit draw failed (falling back to balance error):", error);
+    return false;
+  }
 }
 
 /** Sum the total (amount + fee) this wallet paid in the last 24h, from the ledger. */
@@ -82,6 +112,11 @@ export async function runCapability(input: {
     .limit(1);
 
   if (!agent?.secretEnc) return { ok: false, error: "Agent wallet not found." };
+  // Narrow secretEnc to `string` once, here — `agent.secretEnc` on its own
+  // narrows fine after the guard above, but passing the whole `agent` object
+  // into a helper typed against a stricter shape does not carry that
+  // narrowing through, so tryDrawTrustLineCredit takes `secretEnc` explicitly.
+  const secretEnc = agent.secretEnc;
 
   const url = input.operation
     ? `${API_URL}/c/${input.slug}/${input.operation}`
@@ -141,8 +176,27 @@ export async function runCapability(input: {
     }
   }
 
-  // 3b. Make sure the wallet actually holds enough USDC (clear error, not a 500).
-  const { usdc } = await fetchUsdcBalance(agent.address);
+  // 3b. Make sure the wallet actually holds enough USDC. If it's short, and the
+  // owner has opted THIS agent into credit (policy.allowCreditDraw), try a
+  // TrustLine credit draw before failing — same "the agent never decides to
+  // borrow, it just transacts" model as TrustLine's own payWithCredit, just
+  // transplanted into this runner. Two gates, both off by default: the
+  // TRUSTLINE_API env var (deployment-wide) AND the per-agent policy flag
+  // (owner's explicit consent for this specific agent to take on debt).
+  // Wallets that opt out, have no credit line, or hit any failure just see the
+  // same shortfall and the same error as today — this never blocks a call that
+  // would otherwise have failed anyway.
+  let { usdc } = await fetchUsdcBalance(agent.address);
+  if (
+    agent.policy?.allowCreditDraw &&
+    Money.parse(total.toDecimalString()).isGreaterThan(Money.parse(usdc))
+  ) {
+    const shortfall = total.subtract(Money.parse(usdc));
+    const drew = await tryDrawTrustLineCredit(secretEnc, shortfall.toDecimalString());
+    if (drew) {
+      usdc = (await fetchUsdcBalance(agent.address)).usdc;
+    }
+  }
   if (Money.parse(total.toDecimalString()).isGreaterThan(Money.parse(usdc))) {
     return {
       ok: false,
