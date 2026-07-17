@@ -91,16 +91,19 @@ export async function proxyToUpstream(
       body: hasBody ? await request.arrayBuffer() : undefined,
       signal: controller.signal,
     });
+    clearTimeout(timer);
+
     // Re-emit as a fresh Response so the body is consumable by the SDK wrapper.
     const responseHeaders = new Headers(upstream.headers);
     responseHeaders.delete("content-encoding");
     responseHeaders.delete("content-length");
-    return new Response(await upstream.arrayBuffer(), {
+    return new Response(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: responseHeaders,
     });
-  } finally {
+  } catch (error) {
     clearTimeout(timer);
+    throw error;
   }
 }
