@@ -1,5 +1,12 @@
 {
   "extends": "@tael/config/tsconfig/library.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@tael/payments": ["../payments/src/index.ts"],
+      "@tael/types": ["../types/src/index.ts"]
+    }
+  },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }
