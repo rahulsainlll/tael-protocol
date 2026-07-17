@@ -1,7 +1,7 @@
 import { tael } from "@tael/sdk";
 import { PAYMENT_REQUEST_HEADER, splitFee } from "@tael/payments";
 import { type Container } from "../../container";
-import { proxyToUpstream, isBlockedUrl, resolveUpstreamUrl } from "./upstream";
+import { applyPayerToken, proxyToUpstream, isBlockedUrl, resolveUpstreamUrl } from "./upstream";
 import { checkRateLimit } from "./rate-limit";
 
 /** The slice of the container the gateway needs. */
@@ -157,7 +157,11 @@ export async function handleGatewayRequest(
       }
 
       try {
-        return await proxyToUpstream(capability, paidRequest, targetUrl, receipt.payer);
+        // Substitute `{payer}` in the URL with the verified caller so per-caller
+        // capabilities (e.g. TrustLine's `/agent/{payer}/available-credit`) hit
+        // the right resource. No token → unchanged.
+        const upstreamUrl = applyPayerToken(targetUrl, receipt.payer);
+        return await proxyToUpstream(capability, paidRequest, upstreamUrl, receipt.payer);
       } catch (error) {
         console.error("[gateway] upstream call failed:", error);
         return json({ error: "Upstream call failed" }, 502);

@@ -48,6 +48,19 @@ export function resolveUpstreamUrl(base: string, path: string): string {
 }
 
 /**
+ * Substitute the `{payer}` token in a resolved upstream URL with the caller's
+ * Stellar address, enabling per-caller capabilities (e.g. TrustLine's
+ * `…/agent/{payer}/available-credit`). No token → returned unchanged, so every
+ * existing capability behaves byte-for-byte as before. The address comes from
+ * the settled payment (`receipt.payer`), so it can't be spoofed by the caller;
+ * it's a base32 G-address (URL-safe), but we encode defensively.
+ */
+export function applyPayerToken(url: string, payer: string | undefined): string {
+  if (!url.includes("{payer}")) return url;
+  return url.replaceAll("{payer}", encodeURIComponent(payer ?? ""));
+}
+
+/**
  * Proxy the (already-paid) request to the capability's real upstream endpoint,
  * injecting the decrypted API key. Forwards the caller's method, body, and safe
  * headers; returns the upstream response verbatim. `targetUrl` is the resolved
