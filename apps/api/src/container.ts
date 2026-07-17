@@ -26,6 +26,7 @@ import {
 } from "./modules/capabilities/capability.repository";
 import { DbApiKeyRepository } from "./modules/keys/key.repository";
 import { KeyPaymentService } from "./modules/keys/key.service";
+import { type RateLimiter, InMemoryRateLimiter } from "./modules/gateway/rate-limit";
 
 /**
  * The composition root. This is the ONE place where concrete implementations are
@@ -40,6 +41,7 @@ export interface Container {
   /** Authenticates Tael API keys and auto-pays from their linked Card. */
   keys: KeyPaymentService;
   verifier: PaymentVerifier;
+  limiter: RateLimiter;
   /** Payment settings the gateway needs to build x402 challenges. */
   gateway: {
     issuer: string;
@@ -127,12 +129,15 @@ export function createContainer(env: Env): Container {
   // Real on-chain settlement in production; a mock keeps dev + tests hermetic.
   const verifier = isProd ? createStellarVerifier(env) : createMockVerifier();
 
+  const limiter = new InMemoryRateLimiter(env.RATE_LIMIT_WINDOW_MS, env.RATE_LIMIT_MAX);
+
   return {
     wallets,
     payments,
     capabilities,
     keys,
     verifier,
+    limiter,
     gateway: {
       issuer: env.USDC_ISSUER,
       network: toPaymentNetwork(env.STELLAR_NETWORK),

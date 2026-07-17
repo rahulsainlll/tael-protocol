@@ -22,6 +22,8 @@ const envSchema = z.object({
   // (non-custodial). Unset → no fee (builder keeps 100%). 100 bps = 1%.
   TAEL_FEE_ADDRESS: z.string().optional(),
   TAEL_FEE_BPS: z.coerce.number().int().min(0).max(10000).default(100),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
 });
 
 export type Env = z.infer<typeof envSchema>;
