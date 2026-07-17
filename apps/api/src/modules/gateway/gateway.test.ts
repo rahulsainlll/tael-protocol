@@ -505,4 +505,47 @@ describe("capability gateway", () => {
     expect(headers.has("authorization")).toBe(false);
     expect(headers.get("x-static-only")).toBe("yes");
   });
+
+  it("proxies a streaming response without buffering it", async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode("chunk1"));
+        controller.enqueue(encoder.encode("chunk2"));
+        controller.close();
+      },
+    });
+
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        new Response(stream, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+    );
+    vi.stubGlobal("fetch", upstream);
+
+    const { container } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+
+    const res = await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+
+    const reader = res.body?.getReader();
+    expect(reader).toBeTruthy();
+
+    const decoder = new TextDecoder();
+    let result = "";
+    while (true) {
+      const { done, value } = await reader!.read();
+      if (done) break;
+      result += decoder.decode(value, { stream: true });
+    }
+    expect(result).toBe("chunk1chunk2");
+  });
 });
