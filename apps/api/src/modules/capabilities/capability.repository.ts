@@ -122,7 +122,9 @@ export class DbCapabilityRepository implements CapabilityRepository {
       .where(
         and(
           eq(capabilities.slug, slug),
-          eq(capabilities.status, "verified"),
+          // Serve anything published (pending OR verified), not drafts. Verified
+          // is a trust badge, not a gate on usability.
+          ne(capabilities.status, "draft"),
           ne(capabilities.visibility, "private"),
         ),
       )
@@ -156,7 +158,9 @@ export class DbCapabilityRepository implements CapabilityRepository {
     }
 
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
-    const filters = [eq(capabilities.status, "verified"), eq(capabilities.visibility, "public")];
+    // List anything published (pending + verified), public only. The `verified`
+    // field below reflects which ones carry the trust badge.
+    const filters = [ne(capabilities.status, "draft"), eq(capabilities.visibility, "public")];
     if (query.kind)
       filters.push(
         eq(capabilities.kind, query.kind as (typeof capabilities.kind.enumValues)[number]),

@@ -48,11 +48,14 @@ export const capabilityVisibility = pgEnum("capability_visibility", [
 ]);
 
 /**
- * Verification lifecycle of a capability. `draft` = created but not through the
- * publish/verify wizard; `verified` = the publisher answered the AI-generated
- * FAQ and it's listed with a trust badge.
+ * Verification lifecycle of a capability.
+ *  - `draft`    — created but not published through the wizard (not listed).
+ *  - `pending`  — published and fully usable (listed + callable), but Tael has
+ *                 not vetted it yet, so it shows without the trust badge.
+ *  - `verified` — Tael-vetted; carries the green "Verified" badge.
+ * Only Tael grants `verified` (first-party listings + reviewed third parties).
  */
-export const capabilityStatus = pgEnum("capability_status", ["draft", "verified"]);
+export const capabilityStatus = pgEnum("capability_status", ["draft", "pending", "verified"]);
 
 /** Lifecycle of a payment / settlement. Mirrors @tael/types paymentStatus. */
 export const paymentStatus = pgEnum("payment_status", ["pending", "settled", "failed", "refunded"]);

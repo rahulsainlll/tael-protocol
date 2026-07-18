@@ -11,7 +11,7 @@ import type { CapabilityListItem } from "./list-item";
 
 export function CapabilitiesTable({ items }: { items: CapabilityListItem[] }) {
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"all" | "verified" | "draft">("all");
+  const [status, setStatus] = useState<"all" | "verified" | "pending" | "draft">("all");
   const [pendingDelete, setPendingDelete] = useState<CapabilityListItem | null>(null);
 
   const filtered = useMemo(
@@ -45,6 +45,7 @@ export function CapabilitiesTable({ items }: { items: CapabilityListItem[] }) {
         >
           <option value="all">All statuses</option>
           <option value="verified">Verified</option>
+          <option value="pending">Pending</option>
           <option value="draft">Draft</option>
         </select>
       </div>
@@ -93,6 +94,10 @@ export function CapabilitiesTable({ items }: { items: CapabilityListItem[] }) {
                     {c.status === "verified" ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700">
                         <BadgeCheck className="h-3.5 w-3.5" /> Verified
+                      </span>
+                    ) : c.status === "pending" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Pending
                       </span>
                     ) : (
                       <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">

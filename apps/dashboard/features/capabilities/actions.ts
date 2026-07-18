@@ -165,7 +165,9 @@ export async function publishCapability(
       contact: input.contact || null,
       kind: input.kind,
       visibility: input.visibility,
-      status: "verified",
+      // Published capabilities are usable + listed immediately, but start
+      // `pending` — Tael grants `verified` (the trust badge) after review.
+      status: "pending",
       faqs,
       spec,
       price: minPrice(input.operations),
@@ -183,6 +185,45 @@ export async function publishCapability(
   revalidatePath("/capabilities");
   revalidatePath("/marketplace");
   return { ok: true, slug };
+}
+
+/** Tael-team wallet addresses allowed to grant/revoke the Verified badge. */
+const ADMIN_WALLETS = new Set(
+  (process.env.ADMIN_WALLET_ADDRESSES ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+
+/** Whether the signed-in user is a Tael admin (can grant Verified). */
+export async function isCurrentUserAdmin(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return user ? ADMIN_WALLETS.has(user.walletAddress) : false;
+}
+
+/**
+ * Grant or revoke the Verified badge on a capability. Admin-only. Publishing
+ * leaves a capability `pending`; Tael marks it `verified` after review (or back
+ * to `pending`). Usability is unaffected either way — verified is a trust badge.
+ */
+export async function setCapabilityVerified(id: string, verified: boolean): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  if (!ADMIN_WALLETS.has(user.walletAddress)) return { ok: false, error: "Not authorized." };
+
+  try {
+    await db
+      .update(capabilities)
+      .set({ status: verified ? "verified" : "pending" })
+      .where(eq(capabilities.id, id));
+  } catch (error) {
+    console.error("[capabilities] verify update failed:", error);
+    return { ok: false, error: "Could not update. Try again." };
+  }
+
+  revalidatePath("/marketplace");
+  revalidatePath("/marketplace/[slug]", "page");
+  return { ok: true };
 }
 
 /** Delete a capability the signed-in user owns. */

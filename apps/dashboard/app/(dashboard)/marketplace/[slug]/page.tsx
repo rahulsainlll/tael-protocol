@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BadgeCheck, ChevronDown, Code2 } from "lucide-react";
 import { cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
+import { isCurrentUserAdmin } from "../../../../features/capabilities/actions";
 import { CapabilityLogo } from "../../../../features/capabilities/capability-logo";
 import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilities/kind-meta";
 import { UseCapabilityDialog } from "../../../../features/capabilities/use-capability-dialog";
+import { VerifyToggle } from "../../../../features/capabilities/verify-toggle";
 import { RunCapabilityDialog } from "../../../../features/agents/run-capability-dialog";
 import { listAgentsForRun } from "../../../../features/agents/queries";
 import { ReviewsSection } from "../../../../features/reviews/reviews-section";
@@ -37,6 +39,7 @@ export default async function CapabilityDetailPage({
 
   const agentOptions = await listAgentsForRun();
   const verified = capability.status === "verified";
+  const isAdmin = await isCurrentUserAdmin();
   const meta = kindMeta(capability.kind);
   const Icon = meta.icon;
   const operations = capability.spec.operations ?? [];
@@ -103,8 +106,8 @@ export default async function CapabilityDetailPage({
               <BadgeCheck className="h-4 w-4" /> Verified
             </span>
           ) : (
-            <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-sm text-muted-foreground">
-              Draft
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-sm font-medium text-amber-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> Pending review
             </span>
           )}
         </Meta>
@@ -127,6 +130,8 @@ export default async function CapabilityDetailPage({
           <span className="font-medium">{timeAgo(capability.createdAt.toISOString())}</span>
         </Meta>
       </div>
+
+      {isAdmin ? <VerifyToggle id={capability.id} verified={verified} /> : null}
 
       {contact ? (
         <p className="text-sm text-muted-foreground">
