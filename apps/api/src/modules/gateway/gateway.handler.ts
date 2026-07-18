@@ -3,6 +3,8 @@ import { PAYMENT_REQUEST_HEADER, splitFee } from "@tael/payments";
 import { type Container } from "../../container";
 import { applyPayerToken, proxyToUpstream, isBlockedUrl, resolveUpstreamUrl } from "./upstream";
 import { checkRateLimit } from "./rate-limit";
+import { computeMeteredCost, readTokenUsage } from "./metered";
+import { type ServableCapability } from "../capabilities/capability.repository";
 
 /** The slice of the container the gateway needs. */
 export type GatewayDeps = Pick<
@@ -88,6 +90,12 @@ export async function handleGatewayRequest(
     return json({ error: "Capability upstream is unavailable" }, 502);
   }
 
+  // Metered (usage-based) capability: call the upstream first, then bill by the
+  // actual token usage. A different flow from x402's pay-first, handled here.
+  if (capability.billing?.metered) {
+    return handleMeteredCall(deps, capability, request, targetUrl);
+  }
+
   // Free operation (price 0): no payment gate at all — just proxy and return.
   // Lets a capability mix free reads (balance, quote) with paid actions (swap).
   if (Number(price) <= 0) {
@@ -170,4 +178,85 @@ export async function handleGatewayRequest(
   });
 
   return paid(servedRequest);
+}
+
+/**
+ * Serve a metered (usage-based) capability: authenticate the key, cap the
+ * request to the configured max output tokens, call the upstream, then read the
+ * token usage and compute the exact pass-through cost.
+ *
+ * STAGE A: the cost is computed and logged but NOT charged ($0) — this proves
+ * the token-reading + math on real calls before any money moves. Stage B adds
+ * the actual charge from the Card (pre-checked against its caps + balance).
+ */
+async function handleMeteredCall(
+  deps: GatewayDeps,
+  capability: ServableCapability,
+  request: Request,
+  targetUrl: string,
+): Promise<Response> {
+  const billing = capability.billing!;
+
+  // Metered calls must be authenticated — we need a Card to bill (in Stage B).
+  const bearer = parseTaelKey(request.headers.get("authorization"));
+  if (!bearer) return json({ error: "This capability requires a Tael API key." }, 401);
+  const key = await deps.keys.authorize(bearer);
+  if (!key) return json({ error: "Invalid or revoked API key" }, 401);
+  if (!key.card) {
+    return json({ error: "This API key has no Card linked. Link one to spend from it." }, 402);
+  }
+
+  // Cap the request to our max output tokens so the cost stays bounded. We only
+  // ever lower the caller's max_tokens, never raise it.
+  let servedRequest = request;
+  const method = request.method.toUpperCase();
+  if (billing.maxTokens && method !== "GET" && method !== "HEAD") {
+    try {
+      const raw = await request.clone().text();
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const asked = typeof parsed.max_tokens === "number" ? parsed.max_tokens : billing.maxTokens;
+      parsed.max_tokens = Math.min(asked, billing.maxTokens);
+      const headers = new Headers(request.headers);
+      servedRequest = new Request(request, { headers, body: JSON.stringify(parsed) });
+    } catch {
+      // Body isn't JSON we can cap — proceed as-is; the upstream may still bound it.
+    }
+  }
+
+  // Call the upstream first (call-then-charge), forwarding the paying Card id.
+  let upstream: Response;
+  try {
+    upstream = await proxyToUpstream(capability, servedRequest, targetUrl, key.card.address);
+  } catch (error) {
+    console.error("[gateway] metered upstream call failed:", error);
+    return json({ error: "Upstream call failed" }, 502);
+  }
+
+  // Read the full response to count tokens (metered calls are non-streaming).
+  const bodyText = await upstream.text();
+  const usage = readTokenUsage(bodyText);
+  const model = billing.model ?? "";
+  const cost = usage ? computeMeteredCost(model, usage) : null;
+
+  // STAGE A: log the computed cost; do NOT charge. Stage B settles `cost` from
+  // the Card (pre-checked against caps + balance) before returning.
+  console.log(
+    `[metered] ${capability.slug} card=${key.card.address} model=${model} ` +
+      `usage=${JSON.stringify(usage)} cost=$${cost ?? "unknown"} (Stage A: not charged)`,
+  );
+  void deps.keys.touch(key.id).catch(() => {});
+
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.delete("content-encoding");
+  responseHeaders.delete("content-length");
+  if (cost !== null) responseHeaders.set("x-tael-metered-cost", cost);
+  if (usage) {
+    responseHeaders.set("x-tael-input-tokens", String(usage.inputTokens));
+    responseHeaders.set("x-tael-output-tokens", String(usage.outputTokens));
+  }
+  return new Response(bodyText, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders,
+  });
 }

@@ -59,6 +59,20 @@ export interface UpstreamAuth {
 }
 
 /**
+ * Usage-based (metered) billing config for a capability — used by model
+ * capabilities (Claude, etc.) that charge per token rather than a flat price.
+ * Null/absent = flat per-call pricing (every existing capability).
+ */
+export interface CapabilityBilling {
+  /** Bill by token usage (call-then-charge) instead of a flat per-call price. */
+  metered: boolean;
+  /** Model key the gateway bills at, e.g. "claude-haiku-4-5" (rate lookup). */
+  model?: string;
+  /** Max output tokens the gateway enforces, to bound the worst-case cost. */
+  maxTokens?: number;
+}
+
+/**
  * A published capability: a developer wraps an upstream service (API/MCP/agent)
  * and sells it per call. This is the core reason Tael needs a database — the
  * `upstreamUrl` and `upstreamSecretEnc` (the developer's real API key) are
@@ -99,6 +113,8 @@ export const capabilities = pgTable(
     upstreamSecretEnc: text("upstream_secret_enc"),
     /** Upstream authentication scheme configuration. Nullable (defaults to Bearer). */
     upstreamAuth: jsonb("upstream_auth").$type<UpstreamAuth>(),
+    /** Metered (token-based) billing config. Nullable = flat per-call pricing. */
+    billing: jsonb("billing").$type<CapabilityBilling>(),
 
     publisherId: uuid("publisher_id")
       .notNull()

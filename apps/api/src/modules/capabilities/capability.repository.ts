@@ -8,6 +8,7 @@ import {
   or,
   type Database,
   type UpstreamAuth,
+  type CapabilityBilling,
 } from "@tael/database";
 import { TaelError } from "@tael/types";
 
@@ -39,6 +40,8 @@ export interface ServableCapability {
   upstreamSecretEnc: string | null;
   /** Upstream authentication scheme configuration. */
   upstreamAuth: UpstreamAuth;
+  /** Metered billing config, or null for flat per-call pricing. */
+  billing: CapabilityBilling | null;
   /** Priced operations, for `/c/<slug>/<op>`. Empty when the capability is flat. */
   operations: ServableOperation[];
 }
@@ -116,6 +119,7 @@ export class DbCapabilityRepository implements CapabilityRepository {
         upstreamUrl: capabilities.upstreamUrl,
         upstreamSecretEnc: capabilities.upstreamSecretEnc,
         upstreamAuth: capabilities.upstreamAuth,
+        billing: capabilities.billing,
         spec: capabilities.spec,
       })
       .from(capabilities)
@@ -145,6 +149,7 @@ export class DbCapabilityRepository implements CapabilityRepository {
       upstreamUrl: row.upstreamUrl,
       upstreamSecretEnc: row.upstreamSecretEnc,
       upstreamAuth: row.upstreamAuth ?? { scheme: "bearer" },
+      billing: row.billing ?? null,
       operations,
     };
   }

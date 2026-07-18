@@ -1,0 +1,1 @@
+ALTER TABLE "capabilities" ADD COLUMN "billing" jsonb;
