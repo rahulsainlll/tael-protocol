@@ -49,6 +49,7 @@ const CAPABILITY: ServableCapability = {
   upstreamUrl: "https://api.example.com/age",
   upstreamSecretEnc: null,
   upstreamAuth: { scheme: "bearer" },
+  billing: null,
   operations: [
     { slug: "premium", path: "/premium", price: "0.05" },
     { slug: "ping", path: "/ping", price: "0" },
@@ -764,6 +765,91 @@ describe("capability gateway", () => {
         headers: { authorization: "Bearer tael_live_key2" },
       });
       expect(res.status).toBe(200);
+    });
+  });
+
+  describe("metered (usage-based) capability — Stage A", () => {
+    const METERED: ServableCapability = {
+      ...CAPABILITY,
+      slug: "claude",
+      upstreamUrl: "https://api.anthropic.com/v1/messages",
+      billing: { metered: true, model: "claude-haiku-4-5", maxTokens: 1024 },
+      operations: [],
+    };
+
+    const cardKeys = () =>
+      fakeKeys({
+        authorize: (): Promise<AuthorizedKey | null> =>
+          Promise.resolve({
+            id: "k1",
+            card: {
+              agentId: "a1",
+              address: ADDRESS,
+              secretEnc: "unused",
+              policy: { maxPerCall: "1", dailyLimit: "10", blockedPublishers: [] },
+            },
+          }),
+      });
+
+    it("calls the upstream, reports the exact cost, and charges nothing (Stage A)", async () => {
+      const upstream = vi.fn<typeof fetch>(
+        async () =>
+          new Response(
+            JSON.stringify({
+              content: [{ text: "hi" }],
+              usage: { input_tokens: 1204, output_tokens: 388 },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          ),
+      );
+      vi.stubGlobal("fetch", upstream);
+
+      const { container, payments } = buildContainer(METERED, undefined, cardKeys());
+      const app = createServer(container);
+
+      const res = await app.request("/c/claude", {
+        method: "POST",
+        headers: { authorization: "Bearer tael_live_abc", "content-type": "application/json" },
+        body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 500, messages: [] }),
+      });
+
+      expect(res.status).toBe(200);
+      // Exact pass-through cost is surfaced, and token usage.
+      expect(res.headers.get("x-tael-metered-cost")).toBe("0.0031440");
+      expect(res.headers.get("x-tael-input-tokens")).toBe("1204");
+      expect(res.headers.get("x-tael-output-tokens")).toBe("388");
+      // STAGE A: nothing is charged / recorded.
+      expect(await payments.list()).toHaveLength(0);
+    });
+
+    it("caps max_tokens to the configured limit (never raises it)", async () => {
+      const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+      vi.stubGlobal("fetch", upstream);
+
+      const { container } = buildContainer(METERED, undefined, cardKeys());
+      const app = createServer(container);
+
+      await app.request("/c/claude", {
+        method: "POST",
+        headers: { authorization: "Bearer tael_live_abc", "content-type": "application/json" },
+        // Caller asks for 5000; our cap is 1024.
+        body: JSON.stringify({ model: "claude-haiku-4-5", max_tokens: 5000, messages: [] }),
+      });
+
+      const forwarded = upstream.mock.calls[0]?.[1] as RequestInit;
+      const rawBody =
+        forwarded.body instanceof ArrayBuffer
+          ? new TextDecoder().decode(forwarded.body)
+          : String(forwarded.body);
+      const sentBody = JSON.parse(rawBody) as { max_tokens: number };
+      expect(sentBody.max_tokens).toBe(1024);
+    });
+
+    it("401s a metered call with no API key", async () => {
+      const { container } = buildContainer(METERED, undefined, cardKeys());
+      const app = createServer(container);
+      const res = await app.request("/c/claude", { method: "POST", body: "{}" });
+      expect(res.status).toBe(401);
     });
   });
 });
