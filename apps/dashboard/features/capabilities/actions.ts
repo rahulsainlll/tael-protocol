@@ -9,11 +9,30 @@ import {
   ilike,
   type CapabilityFaq,
   type CapabilitySpec,
+  type UpstreamAuth,
 } from "@tael/database";
 import { generateFaqQuestions } from "@tael/claude";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "./current-user";
-import { minPrice, publishCapabilitySchema, slugify } from "./schema";
+import { minPrice, parseHeaderLines, publishCapabilitySchema, slugify } from "./schema";
+
+/** Build the stored UpstreamAuth from the publisher's choices, or null for the
+ *  plain Bearer default (keeps existing behavior + a compact row). */
+function buildUpstreamAuth(input: {
+  authScheme: "bearer" | "header" | "none";
+  authHeader: string;
+  authExtraHeaders: string;
+}): UpstreamAuth | null {
+  const extra = parseHeaderLines(input.authExtraHeaders);
+  const hasExtra = Object.keys(extra).length > 0;
+  // Plain bearer with no static headers = the default → store null.
+  if (input.authScheme === "bearer" && !hasExtra) return null;
+  return {
+    scheme: input.authScheme,
+    header: input.authScheme === "header" ? input.authHeader || undefined : undefined,
+    extraHeaders: hasExtra ? extra : undefined,
+  };
+}
 
 /** Live result of calling a capability's endpoint during verification. */
 export interface TestResult {
@@ -40,6 +59,9 @@ export async function testRequest(input: {
   method: string;
   body: string;
   secret: string;
+  authScheme?: "bearer" | "header" | "none";
+  authHeader?: string;
+  authExtraHeaders?: string;
 }): Promise<{ ok: boolean; result?: TestResult; error?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
@@ -49,6 +71,9 @@ export async function testRequest(input: {
     method: input.method || "POST",
     body: input.body,
     secret: input.secret,
+    authScheme: input.authScheme ?? "bearer",
+    authHeader: input.authHeader ?? "",
+    authExtraHeaders: input.authExtraHeaders ?? "",
   });
   return { ok: true, result };
 }
@@ -147,6 +172,7 @@ export async function publishCapability(
       payTo: input.payTo,
       upstreamUrl: input.upstreamUrl,
       upstreamSecretEnc: input.upstreamSecret ? encryptSecret(input.upstreamSecret) : null,
+      upstreamAuth: buildUpstreamAuth(input),
       publisherId: user.id,
     });
   } catch (error) {
@@ -217,6 +243,9 @@ async function testUpstream(args: {
   method: string;
   body: string;
   secret: string;
+  authScheme: "bearer" | "header" | "none";
+  authHeader: string;
+  authExtraHeaders: string;
 }): Promise<TestResult> {
   if (isBlockedUrl(args.url)) {
     return {
@@ -230,8 +259,15 @@ async function testUpstream(args: {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
+    // Mirror the gateway's auth injection so the test hits the endpoint the same
+    // way a live call will (Bearer, a named header like x-api-key, or none).
     const headers: Record<string, string> = { accept: "application/json" };
-    if (args.secret) headers.authorization = `Bearer ${args.secret}`;
+    if (args.secret) {
+      if (args.authScheme === "bearer") headers.authorization = `Bearer ${args.secret}`;
+      else if (args.authScheme === "header" && args.authHeader)
+        headers[args.authHeader] = args.secret;
+    }
+    for (const [k, v] of Object.entries(parseHeaderLines(args.authExtraHeaders))) headers[k] = v;
     let reqBody: string | undefined;
     if (args.method !== "GET" && args.method !== "DELETE" && args.body.trim()) {
       headers["content-type"] = "application/json";
@@ -278,6 +314,9 @@ function readDescribe(formData: FormData): Record<string, unknown> {
     payTo: formData.get("payTo"),
     upstreamUrl: formData.get("upstreamUrl"),
     upstreamSecret: formData.get("upstreamSecret") ?? "",
+    authScheme: formData.get("authScheme") ?? "bearer",
+    authHeader: formData.get("authHeader") ?? "",
+    authExtraHeaders: formData.get("authExtraHeaders") ?? "",
     visibility: formData.get("visibility") ?? "public",
     operations: safeParseJson(formData.get("operations")),
   };

@@ -173,6 +173,9 @@ export function PublishWizard() {
         method: op.method || "POST",
         body: op.sampleRequest,
         secret: describe.upstreamSecret ?? "",
+        authScheme: (describe.authScheme as "bearer" | "header" | "none") ?? "bearer",
+        authHeader: describe.authHeader ?? "",
+        authExtraHeaders: describe.authExtraHeaders ?? "",
       });
       setTestingIndex(null);
       if (!res.ok || !res.result) {
@@ -365,6 +368,44 @@ export function PublishWizard() {
                 onChange={(e) => setField("upstreamSecret", e.target.value)}
                 type="password"
                 placeholder="sk-…"
+              />
+            </Field>
+
+            <Field
+              label="Auth scheme"
+              hint="How Tael sends your secret to the endpoint. Use a header like x-api-key for Anthropic; Bearer for most APIs."
+            >
+              <select
+                value={describe.authScheme ?? "bearer"}
+                onChange={(e) => setField("authScheme", e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              >
+                <option value="bearer">Bearer (Authorization: Bearer …)</option>
+                <option value="header">Custom header (e.g. x-api-key)</option>
+                <option value="none">None (no secret sent)</option>
+              </select>
+            </Field>
+
+            {describe.authScheme === "header" ? (
+              <Field label="Header name" hint="The header the secret is sent in, e.g. x-api-key.">
+                <Input
+                  value={describe.authHeader ?? ""}
+                  onChange={(e) => setField("authHeader", e.target.value)}
+                  placeholder="x-api-key"
+                />
+              </Field>
+            ) : null}
+
+            <Field
+              label="Extra headers"
+              hint="Static headers sent on every call, one per line as Name: value. e.g. anthropic-version: 2023-06-01"
+            >
+              <textarea
+                rows={2}
+                value={describe.authExtraHeaders ?? ""}
+                onChange={(e) => setField("authExtraHeaders", e.target.value)}
+                placeholder={"anthropic-version: 2023-06-01"}
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs"
               />
             </Field>
 
