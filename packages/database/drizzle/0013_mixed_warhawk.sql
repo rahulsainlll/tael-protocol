@@ -1,0 +1,1 @@
+ALTER TYPE "public"."capability_status" ADD VALUE 'pending' BEFORE 'verified';

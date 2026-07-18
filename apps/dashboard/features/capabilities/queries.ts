@@ -1,14 +1,15 @@
 import "server-only";
-import { and, capabilities, desc, eq, type Capability } from "@tael/database";
+import { and, capabilities, desc, eq, ne, type Capability } from "@tael/database";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "./current-user";
 
-/** Public capabilities for the marketplace, newest first. */
+/** Public, published capabilities for the marketplace, newest first. Excludes
+ *  drafts; includes both pending and verified (the badge distinguishes them). */
 export async function listPublicCapabilities(): Promise<Capability[]> {
   return db
     .select()
     .from(capabilities)
-    .where(eq(capabilities.visibility, "public"))
+    .where(and(eq(capabilities.visibility, "public"), ne(capabilities.status, "draft")))
     .orderBy(desc(capabilities.createdAt));
 }
 
