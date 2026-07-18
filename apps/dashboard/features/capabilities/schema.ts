@@ -47,9 +47,28 @@ export const describeCapabilitySchema = z.object({
   payTo: stellarAddressSchema,
   upstreamUrl: z.string().url("Enter a valid URL"),
   upstreamSecret: z.string().max(500).optional().default(""),
+  // How Tael sends the upstream secret: bearer (default), a named header
+  // (e.g. x-api-key for Anthropic), or none. `authExtraHeaders` are static
+  // headers always sent (e.g. "anthropic-version: 2023-06-01"), one per line.
+  authScheme: z.enum(["bearer", "header", "none"]).optional().default("bearer"),
+  authHeader: z.string().max(100).optional().default(""),
+  authExtraHeaders: z.string().max(1000).optional().default(""),
   visibility: z.enum(["public", "unlisted", "private"]).default("public"),
   operations: z.array(operationSchema).min(1, "Add at least one request"),
 });
+
+/** Parse "Header-Name: value" lines into a record; ignores blanks/malformed. */
+export function parseHeaderLines(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split("\n")) {
+    const idx = line.indexOf(":");
+    if (idx <= 0) continue;
+    const key = line.slice(0, idx).trim();
+    const value = line.slice(idx + 1).trim();
+    if (key && value) out[key] = value;
+  }
+  return out;
+}
 
 export type DescribeCapabilityInput = z.infer<typeof describeCapabilitySchema>;
 
