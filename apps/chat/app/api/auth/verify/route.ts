@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSessionToken, verifyChallengeToken } from "@tael/auth";
 import { verifySignedMessage } from "@tael/stellar";
-import { AUTH_SECRET, COOKIE_DOMAIN , SESSION_COOKIE } from "../../../../lib/config";
+import { AUTH_SECRET, COOKIE_DOMAIN, SESSION_COOKIE } from "../../../../lib/config";
 
 interface VerifyBody {
   address?: string;

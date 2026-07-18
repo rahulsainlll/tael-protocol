@@ -1,0 +1,39 @@
+{
+  "name": "chat",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "chat.taelprotocol.xyz — an agentic chat that discovers, calls, and pays for capabilities (Next.js 15).",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "build": "next build",
+    "start": "next start --port 3003",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@creit.tech/stellar-wallets-kit": "catalog:",
+    "@stellar/stellar-sdk": "catalog:",
+    "@tael/auth": "workspace:*",
+    "@tael/ui": "workspace:*",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "next-themes": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tael/config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "autoprefixer": "catalog:",
+    "dotenv": "^16.4.7",
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
+  }
+}

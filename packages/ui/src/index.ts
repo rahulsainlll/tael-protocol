@@ -73,3 +73,4 @@ export {
   SIDEBAR_COOKIE_NAME,
 } from "./components/sidebar";
 export { useIsMobile } from "./lib/use-mobile";
+export { Textarea } from "./components/textarea";
