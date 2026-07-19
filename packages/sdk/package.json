@@ -1,6 +1,6 @@
 {
   "name": "@tael/sdk",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "The Tael SDK: call any capability with one API key, or wrap your own service with x402 payments in one line.",
   "license": "MIT",

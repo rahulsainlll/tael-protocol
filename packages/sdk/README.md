@@ -58,6 +58,33 @@ try {
 }
 ```
 
+## Publish: list your product as a capability from code
+
+Publish and manage capabilities with the same API key, no dashboard needed. It goes live immediately, marked `pending`, until Tael grants Verified. Works for every kind (`api`, `mcp`, `agent`, `model`, `dataset`, `credit`).
+
+```ts
+const tael = new Tael({ apiKey: process.env.TAEL_KEY! });
+
+const cap = await tael.publish({
+  name: "Nebula",
+  kind: "mcp",
+  description: "On-Stellar agentic actions and treasury tools.",
+  endpoint: "https://nebulaonchain.xyz/api/tools",
+  auth: { scheme: "header", header: "x-api-key" }, // or "bearer" | "none"; extraHeaders too
+  secret: process.env.NEBULA_TOKEN, // encrypted server-side, never returned
+  payTo: "G...", // must hold a USDC trustline for Tael's issuer
+  operations: [
+    { name: "Check balance", path: "/check-balance", method: "POST", price: "0.001" },
+    { name: "Get address", path: "/get-address", method: "POST", price: "0" },
+  ],
+  faqs: [{ question: "What does check_balance return?", answer: "The calling card's balances." }],
+});
+
+await tael.updateCapability(cap.id, { secret: NEW_TOKEN }); // fix a token in place
+const mine = await tael.myCapabilities(); // list what you publish
+await tael.unpublish(cap.id);
+```
+
 ## Sell: put a price on your own service
 
 The `tael()` wrapper turns any Fetch handler into a payment-gated one. `createTael()` binds your settlement details once and returns a `paid()` factory:
