@@ -219,6 +219,9 @@ importers:
       '@tael/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@tael/stellar':
+        specifier: workspace:*
+        version: link:../../packages/stellar
       '@tael/ui':
         specifier: workspace:*
         version: link:../../packages/ui

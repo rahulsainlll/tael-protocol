@@ -7,8 +7,8 @@ export default function LoginPage() {
       <CardHeader className="text-center">
         <CardTitle className="text-xl">Connect to Tael</CardTitle>
         <CardDescription>
-          Chat your way through the marketplace — search capabilities, link a Card, and pay per
-          call in USDC. Your Stellar wallet is your identity, same as the dashboard.
+          Chat your way through the marketplace — search capabilities, link a Card, and pay per call
+          in USDC. Your Stellar wallet is your identity, same as the dashboard.
         </CardDescription>
       </CardHeader>
       <CardContent>
