@@ -97,4 +97,39 @@ describe("Tael client", () => {
     expect(url.searchParams.get("q")).toBe("weather");
     expect(url.searchParams.get("limit")).toBe("10");
   });
+
+  it("publishes a capability with the key attached (POST /capabilities)", async () => {
+    const { fn, calls } = stubFetch(
+      jsonResponse({ id: "cap-1", slug: "my-api", status: "pending" }, { status: 201 }),
+    );
+    const tael = new Tael({ apiKey: KEY, baseUrl: "https://gw.test", fetch: fn });
+
+    const res = await tael.publish({
+      name: "My API",
+      kind: "api",
+      description: "Does a thing.",
+      endpoint: "https://api.example.com",
+      payTo: "G...",
+      operations: [{ name: "Predict", path: "/predict", price: "0.01" }],
+    });
+
+    expect(res).toEqual({ id: "cap-1", slug: "my-api", status: "pending" });
+    expect(calls[0]?.url).toBe("https://gw.test/capabilities");
+    expect(calls[0]?.init?.method).toBe("POST");
+    const headers = new Headers(calls[0]?.init?.headers);
+    expect(headers.get("authorization")).toBe(`Bearer ${KEY}`);
+    expect(JSON.parse(String(calls[0]?.init?.body)).name).toBe("My API");
+  });
+
+  it("updates and unpublishes with the right verbs", async () => {
+    const { fn, calls } = stubFetch(jsonResponse({ id: "cap-1", slug: "my-api" }));
+    const tael = new Tael({ apiKey: KEY, baseUrl: "https://gw.test", fetch: fn });
+
+    await tael.updateCapability("cap-1", { description: "new" });
+    expect(calls[0]?.url).toBe("https://gw.test/capabilities/cap-1");
+    expect(calls[0]?.init?.method).toBe("PATCH");
+
+    await tael.unpublish("cap-1");
+    expect(calls[1]?.init?.method).toBe("DELETE");
+  });
 });

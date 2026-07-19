@@ -55,6 +55,60 @@ export interface CallOptions {
   query?: Record<string, string | number>;
 }
 
+/** One priced operation when publishing a capability. */
+export interface PublishOperation {
+  name: string;
+  /** Path appended to the endpoint, e.g. "/swap". Empty selects the base URL. */
+  path?: string;
+  method?: string;
+  /** USDC per call, decimal string. "0" = free. */
+  price: string;
+  sampleRequest?: string;
+  sampleResponse?: string;
+}
+
+/** How Tael authenticates to your upstream endpoint. */
+export interface PublishAuth {
+  scheme: "bearer" | "header" | "none";
+  /** Header name when scheme = "header", e.g. "x-api-key". */
+  header?: string;
+  /** Static headers always sent, e.g. { "anthropic-version": "2023-06-01" }. */
+  extraHeaders?: Record<string, string>;
+}
+
+/** The manifest to publish a capability from code. */
+export interface PublishCapabilityInput {
+  name: string;
+  kind: "api" | "mcp" | "agent" | "model" | "dataset" | "credit";
+  description: string;
+  /** The real upstream endpoint Tael proxies to. */
+  endpoint: string;
+  /** Upstream credential — encrypted server-side, never returned. */
+  secret?: string;
+  auth?: PublishAuth;
+  /** Stellar address that receives USDC earnings (needs a USDC trustline). */
+  payTo: string;
+  operations: PublishOperation[];
+  /** Buyer-facing FAQ you write about your product. */
+  faqs?: { question: string; answer: string }[];
+  logoUrl?: string;
+  contact?: string;
+  visibility?: "public" | "unlisted" | "private";
+  billing?: { metered: boolean; model?: string; maxTokens?: number };
+}
+
+/** A capability as returned to its publisher. */
+export interface OwnedCapability {
+  id: string;
+  slug: string;
+  name: string;
+  kind: string;
+  status: string;
+  visibility: string;
+  price: string;
+  createdAt: string;
+}
+
 /** The full result of a paid call: the data, the HTTP status, and the receipt. */
 export interface TaelResponse<T = unknown> {
   data: T;
@@ -177,6 +231,56 @@ export class Tael {
   /** Search the catalog by free text — shorthand for `list({ q })`. */
   search(query: string, options: Omit<ListOptions, "q"> = {}): Promise<CatalogCapability[]> {
     return this.list({ ...options, q: query });
+  }
+
+  // --- Publish side: manage the capabilities YOU sell (authenticated by key) ---
+
+  /** An authenticated JSON request to the write API, keyed by your API key. */
+  private async write<T>(path: string, method: string, body?: unknown): Promise<T> {
+    const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${this.apiKey}`,
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const data = await parseBody(res);
+    if (!res.ok) {
+      const message =
+        (data as { error?: string })?.error ?? `Tael ${method} ${path} failed (${res.status}).`;
+      throw new TaelError(message, res.status, data);
+    }
+    return data as T;
+  }
+
+  /**
+   * Publish a capability from code. It goes live immediately, marked `pending`
+   * until Tael grants Verified. Works for any kind (api, mcp, agent, model,
+   * dataset, credit). Returns the new capability's id, slug, and status.
+   */
+  publish(input: PublishCapabilityInput): Promise<{ id: string; slug: string; status: string }> {
+    return this.write("/capabilities", "POST", input);
+  }
+
+  /** List the capabilities you publish. */
+  async myCapabilities(): Promise<OwnedCapability[]> {
+    const data = await this.write<{ capabilities: OwnedCapability[] }>("/me/capabilities", "GET");
+    return data.capabilities ?? [];
+  }
+
+  /** Update a capability you own. Only the fields you pass change; a blank
+   *  secret keeps the current one. */
+  updateCapability(
+    id: string,
+    input: Partial<PublishCapabilityInput>,
+  ): Promise<{ id: string; slug: string }> {
+    return this.write(`/capabilities/${encodeURIComponent(id)}`, "PATCH", input);
+  }
+
+  /** Unpublish (delete) a capability you own. */
+  unpublish(id: string): Promise<{ ok: boolean }> {
+    return this.write(`/capabilities/${encodeURIComponent(id)}`, "DELETE");
   }
 }
 

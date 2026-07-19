@@ -3,6 +3,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { type Container } from "./container";
 import { handleCatalogRequest, handleGatewayRequest } from "./modules/gateway/gateway.handler";
+import {
+  handleCreateCapability,
+  handleDeleteCapability,
+  handleListOwnCapabilities,
+  handleUpdateCapability,
+} from "./modules/capabilities/capability-write.handler";
 import { createContextFactory } from "./trpc/context";
 import { appRouter } from "./trpc/router";
 
@@ -21,6 +27,17 @@ export function createServer(container: Container) {
   // Public discovery catalog: list/search verified capabilities (no secrets).
   // Lets the SDK do `tael.list()` / `tael.search(...)` and buyers browse.
   app.get("/capabilities", (c) => handleCatalogRequest(container, c.req.raw));
+
+  // Publisher write API (authenticated by a Tael API key → its owner). Lets the
+  // SDK publish and manage capabilities from code: `tael.publish()`, etc.
+  app.post("/capabilities", (c) => handleCreateCapability(container, c.req.raw));
+  app.get("/me/capabilities", (c) => handleListOwnCapabilities(container, c.req.raw));
+  app.patch("/capabilities/:id", (c) =>
+    handleUpdateCapability(container, c.req.param("id"), c.req.raw),
+  );
+  app.delete("/capabilities/:id", (c) =>
+    handleDeleteCapability(container, c.req.param("id"), c.req.raw),
+  );
 
   // The capability gateway: agents call `/c/:slug` and pay per call over x402.
   // Public + unauthenticated by design — the payment *is* the authentication.
