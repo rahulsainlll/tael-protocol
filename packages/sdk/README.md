@@ -60,30 +60,96 @@ try {
 
 ## Publish: list your product as a capability from code
 
-Publish and manage capabilities with the same API key, no dashboard needed. It goes live immediately, marked `pending`, until Tael grants Verified. Works for every kind (`api`, `mcp`, `agent`, `model`, `dataset`, `credit`).
+Turn any product into a paid capability with a single call, using the same API key. No dashboard, no forms. The listing goes live in the marketplace immediately, marked `pending`, and stays fully callable while the Tael team reviews it for the Verified badge. This works for every kind of product through the same method.
 
 ```ts
+import { Tael } from "@tael/sdk";
+
 const tael = new Tael({ apiKey: process.env.TAEL_KEY! });
 
-const cap = await tael.publish({
+const capability = await tael.publish({
   name: "Nebula",
   kind: "mcp",
-  description: "On-Stellar agentic actions and treasury tools.",
-  endpoint: "https://nebulaonchain.xyz/api/tools",
-  auth: { scheme: "header", header: "x-api-key" }, // or "bearer" | "none"; extraHeaders too
-  secret: process.env.NEBULA_TOKEN, // encrypted server-side, never returned
-  payTo: "G...", // must hold a USDC trustline for Tael's issuer
+  description: "On-Stellar agentic actions and treasury tools for AI agents.",
+  endpoint: "https://nebula.example.com/api/tools",
+  auth: { scheme: "header", header: "x-api-key" },
+  secret: process.env.NEBULA_TOKEN,
+  payTo: "GAUQW55J4QANRD4JPEBU4HL23L7SYWU2YSBQRBE6UU2UASOKZ2LZ4KZ5",
   operations: [
     { name: "Check balance", path: "/check-balance", method: "POST", price: "0.001" },
     { name: "Get address", path: "/get-address", method: "POST", price: "0" },
   ],
-  faqs: [{ question: "What does check_balance return?", answer: "The calling card's balances." }],
+  faqs: [{ question: "What does check balance return?", answer: "The calling card's balances." }],
 });
 
-await tael.updateCapability(cap.id, { secret: NEW_TOKEN }); // fix a token in place
-const mine = await tael.myCapabilities(); // list what you publish
-await tael.unpublish(cap.id);
+console.log(capability); // { id, slug, status: "pending" }
 ```
+
+### The manifest, field by field
+
+| Field         | Required | What it is                                                                                                                                |
+| ------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | yes      | A human name for your capability, 2 to 80 characters.                                                                                     |
+| `kind`        | yes      | One of `api`, `mcp`, `agent`, `model`, `dataset`, `credit`. See the table below.                                                          |
+| `description` | yes      | One or two sentences on what it does and what a buyer gets, 10 to 500 characters.                                                         |
+| `endpoint`    | yes      | The real upstream URL Tael proxies each call to.                                                                                          |
+| `payTo`       | yes      | The Stellar address that receives your USDC earnings. It must hold a USDC trustline for Tael's issuer, or payments are rejected on-chain. |
+| `operations`  | yes      | The priced actions your capability exposes. At least one. See below.                                                                      |
+| `auth`        | no       | How Tael authenticates to your endpoint. Defaults to `bearer`.                                                                            |
+| `secret`      | no       | Your upstream key. It is encrypted at rest and never returned.                                                                            |
+| `faqs`        | no       | Buyer-facing questions and answers you write about your product.                                                                          |
+| `logoUrl`     | no       | A logo URL for the marketplace listing.                                                                                                   |
+| `contact`     | no       | An email, link, or handle buyers can reach you at.                                                                                        |
+| `visibility`  | no       | `public` (default), `unlisted`, or `private`.                                                                                             |
+| `billing`     | no       | Per-token metering for `model` kinds: `{ metered: true, model, maxTokens }`.                                                              |
+
+### Choosing a kind
+
+| Kind      | Use it for                                                  |
+| --------- | ----------------------------------------------------------- |
+| `api`     | Any REST or HTTP endpoint, such as OCR, weather, or search. |
+| `mcp`     | A Model Context Protocol server, or a single tool from one. |
+| `agent`   | A hosted agent that takes a task and returns a result.      |
+| `model`   | An inference endpoint, billed per token (set `billing`).    |
+| `dataset` | A paid data feed or query endpoint.                         |
+| `credit`  | An agent credit line (borrowing capacity), read on demand.  |
+
+### Authentication to your endpoint
+
+Tael injects your credential on the server, so buyers never see it. Choose how it is sent:
+
+```ts
+auth: { scheme: "bearer" }                              // Authorization: Bearer <secret>  (default)
+auth: { scheme: "header", header: "x-api-key" }         // x-api-key: <secret>  (e.g. Anthropic)
+auth: { scheme: "none" }                                // no secret sent
+auth: { scheme: "header", header: "x-api-key",
+        extraHeaders: { "anthropic-version": "2023-06-01" } }  // plus static headers
+```
+
+### Operations and pricing
+
+Each operation is one priced action, reachable at `/<slug>/<operation>`. `path` is appended to your `endpoint`; a price of `"0"` makes an operation free.
+
+```ts
+operations: [
+  { name: "Swap", path: "/swap", method: "POST", price: "0.01" }, // paid
+  { name: "Get a quote", path: "/quote", method: "POST", price: "0" }, // free
+];
+```
+
+### Manage what you publish
+
+```ts
+await tael.updateCapability(capability.id, { secret: NEW_TOKEN }); // change only what you pass
+const mine = await tael.myCapabilities(); // list your capabilities
+await tael.unpublish(capability.id); // remove it
+```
+
+On update, only the fields you pass change, and a blank `secret` keeps the current one. This is how you fix an endpoint, rotate a token, or reprice, all from code.
+
+### For AI agents
+
+An agent can onboard a product end to end: read this section, produce a manifest from the fields above, and call `tael.publish(manifest)`. Every call returns typed data, and a failure throws a `TaelError` with the exact status and message, so an agent can correct the manifest and try again without a human in the loop.
 
 ## Sell: put a price on your own service
 
