@@ -6,6 +6,7 @@ const TOC = [
   { label: "What you need", href: "#requirements" },
   { label: "Pricing & fees", href: "#pricing" },
   { label: "Publish it", href: "#publish" },
+  { label: "Verification", href: "#verification" },
   { label: "Onboarding prompt", href: "#prompt" },
 ];
 
@@ -155,10 +156,74 @@ const result = await tael.post("your-product", { ...input });`}
       <H2 id="publish">Publish it</H2>
       <P>
         Sign in to the dashboard with your Stellar wallet, open <strong>My Capabilities</strong>,
-        and add one. You paste your endpoint, set a price, run a live test against it, and answer a
-        short set of verification questions. Once it is verified, it appears in the marketplace and
-        becomes callable by any Tael key. The <A href="/docs/quickstart">Quickstart</A> walks
-        through the whole flow.
+        and add one. The wizard walks you through it in four short steps:
+      </P>
+      <Ul>
+        <li>
+          <strong>Describe.</strong> Name your capability, choose its kind, and add its endpoint,
+          your price per call, and your Stellar payout address. If your endpoint needs a key, set
+          the auth scheme (Bearer, or a header such as <Code>x-api-key</Code>) and paste the key. It
+          is encrypted and injected on the server, so buyers never see it.
+        </li>
+        <li>
+          <strong>Test.</strong> Run each request live against your real endpoint. Tael captures the
+          actual response and uses it as the public sample, so what buyers see is what your API
+          truly returns.
+        </li>
+        <li>
+          <strong>Answer.</strong> Reply to a short set of AI-generated questions about your
+          capability. Your answers become its public FAQ.
+        </li>
+        <li>
+          <strong>Publish.</strong> Your capability goes live in the marketplace immediately and is
+          callable by any Tael key. It starts marked <strong>Pending review</strong> until Tael
+          verifies it (see below).
+        </li>
+      </Ul>
+      <P>
+        The <A href="/docs/quickstart">Quickstart</A> walks through the whole flow end to end.
+      </P>
+
+      <H2 id="verification">Verification</H2>
+      <P>
+        Every capability carries a status that tells buyers how much Tael has vetted it. Publishing
+        never blocks on this, and it never limits what your capability can do. It is purely a signal
+        of trust.
+      </P>
+      <Ul>
+        <li>
+          <strong>Pending review.</strong> The state every new third-party capability starts in. It
+          is fully live: listed in the marketplace, discoverable, and callable, and you earn on
+          every call from the moment you publish. It simply has not yet been reviewed by the Tael
+          team, so it shows a neutral <strong>Pending</strong> badge rather than the green check.
+        </li>
+        <li>
+          <strong>Verified.</strong> A trust badge that only the Tael team grants, after we review
+          the capability. Verified capabilities carry the green check that buyers look for, and they
+          rank ahead of unverified ones in discovery.
+        </li>
+      </Ul>
+      <P>
+        To move from Pending to Verified, make sure your listing is accurate and complete: a clear
+        description that matches what the endpoint returns, a working live test, an answered FAQ,
+        and a payout wallet that holds the required USDC trustline (see{" "}
+        <A href="#requirements">What you need</A>). Then reach out to the team through your
+        capability contact or our community channels, and we will review it. There is nothing extra
+        to build.
+      </P>
+      <Callout>
+        Verification is a badge, not a gate. A Pending capability is a fully working, fully paid
+        capability. Verified simply tells buyers that Tael has looked it over and vouches for it.
+      </Callout>
+      <P>
+        <strong>First-party and partner capabilities.</strong> Some capabilities are verified by
+        Tael from day one. These include our own first-party model capabilities, where Tael wraps
+        providers such as <strong>Claude</strong> and <strong>Grok</strong> so any agent can call a
+        frontier model with a single key and pay for it by the token in USDC, and our vetted
+        ecosystem partners such as <strong>Nebula</strong> for on-Stellar agentic actions and{" "}
+        <strong>TrustLine</strong> for agent credit lines. These arrive Verified because we run or
+        directly vet them, which is the same bar we hold every other capability to before granting
+        the badge.
       </P>
 
       <H2 id="prompt">Onboarding prompt</H2>
