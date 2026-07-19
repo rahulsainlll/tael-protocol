@@ -1,10 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 
-/**
- * Deliberately NOT `@tael/claude`'s `CLAUDE_MODEL` (pinned to Haiku for cheap
- * FAQ generation) — this is the user-facing agent loop, per issue #42's spec.
- */
 export const CHAT_MODEL = "claude-opus-4-8" as const;
 
 let singleton: Anthropic | undefined;

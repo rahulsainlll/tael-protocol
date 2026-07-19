@@ -11,8 +11,8 @@ loadEnv({ path: resolve(process.cwd(), "../../.env") });
 const config: NextConfig = {
   reactStrictMode: true,
   // Compile the workspace packages consumed as TypeScript source.
-  transpilePackages: ["@tael/ui", "@tael/auth", "@tael/stellar"],
-  serverExternalPackages: ["@anthropic-ai/sdk"],
-};
+  transpilePackages: ["@tael/ui", "@tael/auth", "@tael/stellar", "@tael/database", "@tael/claude"],
+  serverExternalPackages: ["@stellar/stellar-sdk", "postgres", "@anthropic-ai/sdk"],
+ };
 
 export default config;

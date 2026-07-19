@@ -1,24 +1,30 @@
 "use client";
 
-import { type KeyboardEvent } from "react";
-import { Send } from "lucide-react";
+import { useState, type KeyboardEvent } from "react";
+import { ArrowUp, Square } from "lucide-react";
 import { Button, Textarea } from "@tael/ui";
 
 export function Composer({
-  value,
-  onChange,
+  isStreaming,
   onSend,
-  disabled,
+  onStop,
 }: {
-  value: string;
-  onChange: (value: string) => void;
-  onSend: () => void;
-  disabled?: boolean;
+  isStreaming: boolean;
+  onSend: (text: string) => void;
+  onStop: () => void;
 }) {
-  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  const [value, setValue] = useState("");
+
+  function submit() {
+    if (!value.trim() || isStreaming) return;
+    onSend(value);
+    setValue("");
+  }
+
+  function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      if (value.trim() && !disabled) onSend();
+      submit();
     }
   }
 
@@ -27,16 +33,27 @@ export function Composer({
       <div className="mx-auto flex max-w-2xl items-end gap-2">
         <Textarea
           value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask about Tael, or run a capability…"
-          disabled={disabled}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Ask Tael to find, link, or run a capability…"
           rows={1}
-          className="max-h-40 resize-none"
+          className="max-h-40 min-h-[44px] resize-none"
         />
-        <Button size="icon" disabled={disabled || !value.trim()} onClick={onSend} aria-label="Send">
-          <Send className="h-4 w-4" />
-        </Button>
+        {isStreaming ? (
+          <Button type="button" variant="outline" size="icon" onClick={onStop} aria-label="Stop">
+            <Square className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="icon"
+            onClick={submit}
+            disabled={!value.trim()}
+            aria-label="Send"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );

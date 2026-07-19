@@ -250,6 +250,12 @@ importers:
       '@tael/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@tael/claude':
+        specifier: workspace:*
+        version: link:../../packages/claude
+      '@tael/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@tael/stellar':
         specifier: workspace:*
         version: link:../../packages/stellar
@@ -271,6 +277,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.7(react@19.2.7)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
     devDependencies:
       '@tael/config':
         specifier: workspace:*
@@ -299,6 +308,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.6(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.23.0)
 
   apps/dashboard:
     dependencies:

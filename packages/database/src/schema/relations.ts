@@ -5,6 +5,7 @@ import { capabilities } from "./capabilities";
 import { agents } from "./agents";
 import { payments } from "./payments";
 import { apiKeys } from "./api-keys";
+import {chatThreads, chatMessages} from "./chat";
 
 // Typed relations enable Drizzle's relational query API (db.query.users.findMany
 // with `with: { wallets: true }`, etc.) without hand-written joins.
@@ -39,4 +40,13 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   owner: one(users, { fields: [apiKeys.ownerId], references: [users.id] }),
+}));
+
+export const chatThreadsRelations = relations(chatThreads, ({ one, many }) => ({
+  owner: one(users, { fields: [chatThreads.ownerId], references: [users.id] }),
+  messages: many(chatMessages),
+}));
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  thread: one(chatThreads, { fields: [chatMessages.threadId], references: [chatThreads.id] }),
 }));
