@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { BadgeCheck, Search, Trash2 } from "lucide-react";
+import { BadgeCheck, Pencil, Search, Trash2 } from "lucide-react";
 import { cn, Input } from "@tael/ui";
 import { formatPrice, kindMeta, timeAgo } from "./kind-meta";
 import { CapabilityLogo } from "./capability-logo";
@@ -116,14 +116,23 @@ export function CapabilitiesTable({ items }: { items: CapabilityListItem[] }) {
                     {timeAgo(c.createdAt)}
                   </td>
                   <td className="px-2 py-3 text-right">
-                    <button
-                      type="button"
-                      aria-label={`Delete ${c.name}`}
-                      onClick={() => setPendingDelete(c)}
-                      className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/capabilities/${c.id}/edit`}
+                        aria-label={`Edit ${c.name}`}
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                      <button
+                        type="button"
+                        aria-label={`Delete ${c.name}`}
+                        onClick={() => setPendingDelete(c)}
+                        className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
