@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, ChevronDown, Code2 } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronDown, Code2, Pencil } from "lucide-react";
 import { cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
 import { isCurrentUserAdmin } from "../../../../features/capabilities/actions";
@@ -131,7 +131,17 @@ export default async function CapabilityDetailPage({
         </Meta>
       </div>
 
-      {isAdmin ? <VerifyToggle id={capability.id} verified={verified} /> : null}
+      {isAdmin ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <VerifyToggle id={capability.id} verified={verified} />
+          <Link
+            href={`/capabilities/${capability.id}/edit`}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            <Pencil className="h-4 w-4" /> Edit
+          </Link>
+        </div>
+      ) : null}
 
       {contact ? (
         <p className="text-sm text-muted-foreground">

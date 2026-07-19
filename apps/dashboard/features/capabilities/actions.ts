@@ -14,7 +14,14 @@ import {
 import { generateFaqQuestions } from "@tael/claude";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "./current-user";
-import { minPrice, parseHeaderLines, publishCapabilitySchema, slugify } from "./schema";
+import {
+  describeCapabilitySchema,
+  minPrice,
+  parseHeaderLines,
+  publishCapabilitySchema,
+  slugify,
+  type PublishCapabilityInput,
+} from "./schema";
 
 /** Build the stored UpstreamAuth from the publisher's choices, or null for the
  *  plain Bearer default (keeps existing behavior + a compact row). */
@@ -185,6 +192,87 @@ export async function publishCapability(
   revalidatePath("/capabilities");
   revalidatePath("/marketplace");
   return { ok: true, slug };
+}
+
+/** Build the operations spec from the form's operation list (shared with publish). */
+function buildOperationsSpec(operations: PublishCapabilityInput["operations"]): CapabilitySpec {
+  const opSlugs = new Set<string>();
+  return {
+    operations: operations.map((op, i) => {
+      const base = slugify(op.name || `op-${i + 1}`) || `op-${i + 1}`;
+      let opSlug = base;
+      for (let n = 2; opSlugs.has(opSlug); n += 1) opSlug = `${base}-${n}`;
+      opSlugs.add(opSlug);
+      return {
+        name: op.name || "Request",
+        slug: opSlug,
+        path: op.path || undefined,
+        method: op.method || undefined,
+        sampleRequest: op.sampleRequest || undefined,
+        sampleResponse: op.sampleResponse || undefined,
+        price: op.price,
+      };
+    }),
+  };
+}
+
+/**
+ * Edit a capability the current user owns (or any capability, if the user is a
+ * Tael admin). Updates the editable fields and the operation list; the slug and
+ * the answered FAQ are preserved. The upstream secret is only re-encrypted when
+ * a new one is provided, so leaving the field blank keeps the existing key.
+ * Status is left as-is (a verified capability stays verified) — an admin can
+ * always revoke the badge if an edit changes what was reviewed.
+ */
+export async function editCapability(
+  id: string,
+  formData: FormData,
+): Promise<ActionResult & { slug?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  // Load the row and check the caller may edit it (owner or admin).
+  const [existing] = await db.select().from(capabilities).where(eq(capabilities.id, id)).limit(1);
+  if (!existing) return { ok: false, error: "Capability not found." };
+  const isOwner = existing.publisherId === user.id;
+  const isAdmin = ADMIN_WALLETS.has(user.walletAddress);
+  if (!isOwner && !isAdmin) return { ok: false, error: "Not authorized." };
+
+  const parsed = describeCapabilitySchema.safeParse(readDescribe(formData));
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const input = parsed.data;
+
+  try {
+    await db
+      .update(capabilities)
+      .set({
+        name: input.name,
+        description: input.description,
+        logoUrl: input.logoUrl || null,
+        contact: input.contact || null,
+        kind: input.kind,
+        visibility: input.visibility,
+        spec: buildOperationsSpec(input.operations),
+        price: minPrice(input.operations),
+        payTo: input.payTo,
+        upstreamUrl: input.upstreamUrl,
+        // Only overwrite the secret when a new one is entered; blank keeps it.
+        ...(input.upstreamSecret ? { upstreamSecretEnc: encryptSecret(input.upstreamSecret) } : {}),
+        upstreamAuth: buildUpstreamAuth(input),
+        updatedAt: new Date(),
+      })
+      .where(eq(capabilities.id, id));
+  } catch (error) {
+    console.error("[capabilities] edit failed:", error);
+    return { ok: false, error: "Could not save. Try again." };
+  }
+
+  revalidatePath("/capabilities");
+  revalidatePath("/marketplace");
+  revalidatePath(`/marketplace/${existing.slug}`);
+  return { ok: true, slug: existing.slug };
 }
 
 /** Tael-team wallet addresses allowed to grant/revoke the Verified badge. */
