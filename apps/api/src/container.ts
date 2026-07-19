@@ -31,6 +31,7 @@ import { CapabilityWriteService } from "./modules/capabilities/capability-write"
 import { DbApiKeyRepository } from "./modules/keys/key.repository";
 import { KeyPaymentService } from "./modules/keys/key.service";
 import { type RateLimiter, InMemoryRateLimiter } from "./modules/gateway/rate-limit";
+import { type IdempotencyStore, InMemoryIdempotencyStore } from "./modules/gateway/idempotency";
 
 /**
  * The composition root. This is the ONE place where concrete implementations are
@@ -48,6 +49,7 @@ export interface Container {
   keys: KeyPaymentService;
   verifier: PaymentVerifier;
   limiter: RateLimiter;
+  idempotency: IdempotencyStore;
   /** Payment settings the gateway needs to build x402 challenges. */
   gateway: {
     issuer: string;
@@ -158,6 +160,8 @@ export function createContainer(env: Env): Container {
 
   const limiter = new InMemoryRateLimiter(env.RATE_LIMIT_WINDOW_MS, env.RATE_LIMIT_MAX);
 
+  const idempotency = new InMemoryIdempotencyStore(env.IDEMPOTENCY_TTL_MS);
+
   return {
     wallets,
     payments,
@@ -166,6 +170,7 @@ export function createContainer(env: Env): Container {
     keys,
     verifier,
     limiter,
+    idempotency,
     gateway: {
       issuer: env.USDC_ISSUER,
       network: toPaymentNetwork(env.STELLAR_NETWORK),

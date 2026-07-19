@@ -24,6 +24,7 @@ const envSchema = z.object({
   TAEL_FEE_BPS: z.coerce.number().int().min(0).max(10000).default(100),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
+  IDEMPOTENCY_TTL_MS: z.coerce.number().int().positive().default(600000),
   PARTNER_HMAC_SECRET: z.string().optional(),
 });
 

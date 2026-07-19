@@ -2,6 +2,7 @@ import { createHmac } from "crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { env } from "../../env";
 import { InMemoryRateLimiter } from "./rate-limit";
+import { InMemoryIdempotencyStore } from "./idempotency";
 
 const testRateLimiter = new InMemoryRateLimiter(60000, 120);
 import {
@@ -104,8 +105,10 @@ function buildContainer(
 ): {
   container: Container;
   payments: PaymentService;
+  idempotency: InMemoryIdempotencyStore;
 } {
   const payments = new PaymentService(new InMemoryPaymentRepository());
+  const idempotency = new InMemoryIdempotencyStore(600000);
   const container: Container = {
     wallets: new WalletService(new InMemoryWalletRepository()),
     payments,
@@ -114,6 +117,7 @@ function buildContainer(
     keys,
     verifier: createMockVerifier(),
     limiter: testRateLimiter,
+    idempotency,
     gateway: {
       issuer: ADDRESS,
       network: "stellar-testnet",
@@ -122,7 +126,7 @@ function buildContainer(
       feeBps: fee?.feeBps ?? 0,
     },
   };
-  return { container, payments };
+  return { container, payments, idempotency };
 }
 
 function paymentHeader(): string {
@@ -136,7 +140,7 @@ function paymentHeader(): string {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  testRateLimiter.reset();
+  testRateLimiter.reset(60000, 120);
 });
 
 describe("capability gateway", () => {
@@ -882,6 +886,174 @@ describe("capability gateway", () => {
       const app = createServer(container);
       const res = await app.request("/c/claude", { method: "POST", body: "{}" });
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe("gateway idempotency keys", () => {
+    it("returns cached response on repeated paid call with same Idempotency-Key", async () => {
+      const upstream = vi.fn<typeof fetch>(
+        async () =>
+          new Response(JSON.stringify({ age: 41 }), {
+            status: 200,
+            headers: { "content-type": "application/json", "x-custom-header": "test-val" },
+          }),
+      );
+      vi.stubGlobal("fetch", upstream);
+
+      const { container, payments } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      const idempotencyKey = "key-12345";
+
+      // Call 1: Runs normally, gets cached
+      const res1 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: {
+          [PAYMENT_REQUEST_HEADER]: paymentHeader(),
+          "idempotency-key": idempotencyKey,
+        },
+      });
+      expect(res1.status).toBe(200);
+      expect(res1.headers.get("x-custom-header")).toBe("test-val");
+      expect(await res1.json()).toEqual({ age: 41 });
+
+      expect(upstream).toHaveBeenCalledOnce();
+      expect(await payments.list()).toHaveLength(1);
+
+      // Call 2: Returns cached result
+      const res2 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: {
+          [PAYMENT_REQUEST_HEADER]: paymentHeader(),
+          "idempotency-key": idempotencyKey,
+        },
+      });
+      expect(res2.status).toBe(200);
+      expect(res2.headers.get("x-custom-header")).toBe("test-val");
+      expect(await res2.json()).toEqual({ age: 41 });
+
+      // Upstream fetch is not called a second time
+      expect(upstream).toHaveBeenCalledOnce();
+      // Payment is not recorded a second time
+      expect(await payments.list()).toHaveLength(1);
+    });
+
+    it("does not cache calls without the header", async () => {
+      const upstream = vi.fn<typeof fetch>(
+        async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+      vi.stubGlobal("fetch", upstream);
+
+      const { container, payments } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      const res1 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+      });
+      expect(res1.status).toBe(200);
+
+      const res2 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+      });
+      expect(res2.status).toBe(200);
+
+      expect(upstream).toHaveBeenCalledTimes(2);
+      expect(await payments.list()).toHaveLength(2);
+    });
+
+    it("keeps different keys independent", async () => {
+      const upstream = vi.fn<typeof fetch>(
+        async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+      vi.stubGlobal("fetch", upstream);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      const res1 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: {
+          [PAYMENT_REQUEST_HEADER]: paymentHeader(),
+          "idempotency-key": "key-1",
+        },
+      });
+      expect(res1.status).toBe(200);
+
+      const res2 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: {
+          [PAYMENT_REQUEST_HEADER]: paymentHeader(),
+          "idempotency-key": "key-2",
+        },
+      });
+      expect(res2.status).toBe(200);
+
+      expect(upstream).toHaveBeenCalledTimes(2);
+    });
+
+    it("returns 409 Conflict if a repeat call is made while the first is in-flight", async () => {
+      let resolveUpstream: (value: Response) => void = () => {};
+      const upstreamPromise = new Promise<Response>((resolve) => {
+        resolveUpstream = resolve;
+      });
+
+      const upstream = vi.fn<typeof fetch>(async () => upstreamPromise);
+      vi.stubGlobal("fetch", upstream);
+
+      const { container } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      const idempotencyKey = "key-inflight";
+
+      // Call 1: Starts and stays in-flight
+      const call1Promise = app.request("/c/predict-age", {
+        method: "POST",
+        headers: {
+          [PAYMENT_REQUEST_HEADER]: paymentHeader(),
+          "idempotency-key": idempotencyKey,
+        },
+      });
+
+      // Wait a tick to let Call 1 mark the key in-flight
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Call 2: Returns 409 Conflict
+      const res2 = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: {
+          [PAYMENT_REQUEST_HEADER]: paymentHeader(),
+          "idempotency-key": idempotencyKey,
+        },
+      });
+      expect(res2.status).toBe(409);
+      expect(await res2.json()).toEqual({
+        error: "A request with this Idempotency-Key is already in progress.",
+      });
+
+      // Complete Call 1
+      resolveUpstream(new Response("{}", { status: 200 }));
+      const res1 = await call1Promise;
+      expect(res1.status).toBe(200);
+    });
+
+    it("deletes key if pre-execution checks fail (e.g. 402 challenge)", async () => {
+      const { container, idempotency } = buildContainer(CAPABILITY);
+      const app = createServer(container);
+
+      const idempotencyKey = "key-fail";
+
+      // No payment header -> returns 402 challenge
+      const res = await app.request("/c/predict-age", {
+        method: "POST",
+        headers: { "idempotency-key": idempotencyKey },
+      });
+      expect(res.status).toBe(402);
+
+      // Key should have been deleted from store, so next call is not 409
+      const entry = await idempotency.get(idempotencyKey);
+      expect(entry).toBeNull();
     });
   });
 });
