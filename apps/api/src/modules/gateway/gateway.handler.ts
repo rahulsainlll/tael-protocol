@@ -1,5 +1,14 @@
-import { tael } from "@tael/sdk";
-import { PAYMENT_REQUEST_HEADER, splitFee } from "@tael/payments";
+import {
+  buildPaymentRequirements,
+  decodePaymentHeader,
+  PAYMENT_REQUEST_HEADER,
+  PAYMENT_RESPONSE_HEADER,
+  settlePayment,
+  splitFee,
+  validatePayment,
+  X402_VERSION,
+} from "@tael/payments";
+import { PaymentVerificationError } from "@tael/types";
 import { type Container } from "../../container";
 import { applyPayerToken, proxyToUpstream, isBlockedUrl, resolveUpstreamUrl } from "./upstream";
 import { checkRateLimit } from "./rate-limit";
@@ -139,45 +148,90 @@ export async function handleGatewayRequest(
     void deps.keys.touch(key.id).catch(() => {});
   }
 
-  const paid = tael({
+  // Build the x402 challenge requirements once (used for the 402 and to validate).
+  const requirements = buildPaymentRequirements({
     price,
     payTo: capability.payTo,
     issuer: deps.gateway.issuer,
     network: deps.gateway.network,
-    verifier: deps.verifier,
+    resource: new URL(servedRequest.url).pathname,
     description: capability.name,
     fee,
-    handler: async ({ request: paidRequest, receipt }) => {
-      // The payment settled during verification — record it before doing the
-      // work, so the ledger is correct even if the upstream then misbehaves.
-      try {
-        await deps.payments.recordSettled({
-          capabilityId: capability.id,
-          capabilityName: capability.name,
-          payer: receipt.payer,
-          payee: capability.payTo,
-          amount: split.net,
-          fee: split.fee,
-          txHash: receipt.txHash,
-        });
-      } catch (error) {
-        console.error("[gateway] failed to record payment:", error);
-      }
-
-      try {
-        // Substitute `{payer}` in the URL with the verified caller so per-caller
-        // capabilities (e.g. TrustLine's `/agent/{payer}/available-credit`) hit
-        // the right resource. No token → unchanged.
-        const upstreamUrl = applyPayerToken(targetUrl, receipt.payer);
-        return await proxyToUpstream(capability, paidRequest, upstreamUrl, receipt.payer);
-      } catch (error) {
-        console.error("[gateway] upstream call failed:", error);
-        return json({ error: "Upstream call failed" }, 502);
-      }
-    },
   });
 
-  return paid(servedRequest);
+  // No payment attached → return the 402 challenge.
+  const paymentHeader = servedRequest.headers.get(PAYMENT_REQUEST_HEADER);
+  if (!paymentHeader) {
+    return json({ x402Version: X402_VERSION, accepts: [requirements] }, 402);
+  }
+
+  // Serve-then-settle: VALIDATE the payment (no on-chain submit), CALL the
+  // upstream, and only SETTLE if the upstream succeeded. A failed capability is
+  // therefore never charged — the signed transaction is simply never submitted.
+  let validated;
+  try {
+    const payload = decodePaymentHeader(paymentHeader);
+    validated = await validatePayment(payload, requirements, deps.verifier);
+  } catch (error) {
+    if (error instanceof PaymentVerificationError) {
+      return json(
+        { x402Version: X402_VERSION, accepts: [requirements], error: error.message },
+        402,
+      );
+    }
+    throw error;
+  }
+
+  // Substitute `{payer}` in the URL with the validated caller so per-caller
+  // capabilities (e.g. TrustLine's `/agent/{payer}/available-credit`) hit the
+  // right resource. No token → unchanged.
+  const upstreamUrl = applyPayerToken(targetUrl, validated.payer);
+  let upstream: Response;
+  try {
+    upstream = await proxyToUpstream(capability, servedRequest, upstreamUrl, validated.payer);
+  } catch (error) {
+    console.error("[gateway] upstream call failed:", error);
+    return json({ error: "Upstream call failed" }, 502);
+  }
+
+  // The upstream failed → do NOT settle. Return its error untouched, unpaid.
+  if (!upstream.ok) {
+    return upstream;
+  }
+
+  // The call succeeded → settle the payment on-chain and record it.
+  let receipt;
+  try {
+    receipt = await settlePayment(validated, deps.verifier);
+  } catch (error) {
+    console.error("[gateway] settlement failed after a successful call:", error);
+    return json({ error: "Payment settlement failed. You were not charged." }, 402);
+  }
+
+  try {
+    await deps.payments.recordSettled({
+      capabilityId: capability.id,
+      capabilityName: capability.name,
+      payer: receipt.payer,
+      payee: capability.payTo,
+      amount: split.net,
+      fee: split.fee,
+      txHash: receipt.txHash,
+    });
+  } catch (error) {
+    console.error("[gateway] failed to record payment:", error);
+  }
+
+  const headers = new Headers(upstream.headers);
+  headers.set(
+    PAYMENT_RESPONSE_HEADER,
+    Buffer.from(JSON.stringify(receipt), "utf8").toString("base64"),
+  );
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers,
+  });
 }
 
 /**

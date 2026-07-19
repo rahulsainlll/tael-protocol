@@ -1,8 +1,11 @@
 import {
   createMockVerifier,
   type PaymentNetwork,
+  type PaymentPayload,
+  type PaymentRequirements,
   type PaymentVerifier,
   type SettlementReceipt,
+  type ValidatedPayment,
 } from "@tael/payments";
 import { PaymentVerificationError } from "@tael/types";
 import {
@@ -67,35 +70,55 @@ function createStellarVerifier(env: Env): PaymentVerifier {
   });
   const network = toPaymentNetwork(env.STELLAR_NETWORK);
 
-  return {
-    async verify(payload, requirements): Promise<SettlementReceipt> {
-      // Validate — offline — that the signed tx actually pays the required legs
-      // (builder + any fee) in USDC, BEFORE submitting. Without this the gateway
-      // would settle and serve any well-formed transaction (submit-and-trust).
-      const expected: ExpectedPayment[] = [
-        { to: requirements.payTo, minAmount: requirements.maxAmountRequired },
-      ];
-      if (requirements.fee) {
-        expected.push({ to: requirements.fee.payTo, minAmount: requirements.fee.amount });
-      }
-      const check = verifyTransactionPayments(
-        payload.payload.transaction,
-        env.STELLAR_NETWORK,
-        env.USDC_ISSUER,
-        expected,
-      );
-      if (!check.ok) {
-        throw new PaymentVerificationError(check.reason ?? "Payment does not satisfy requirements");
-      }
+  // Offline check that the signed tx actually pays the required legs (builder +
+  // any fee) in USDC, BEFORE submitting. Without this the gateway would settle
+  // and serve any well-formed transaction (submit-and-trust).
+  function assertPays(payload: PaymentPayload, requirements: PaymentRequirements): string {
+    const expected: ExpectedPayment[] = [
+      { to: requirements.payTo, minAmount: requirements.maxAmountRequired },
+    ];
+    if (requirements.fee) {
+      expected.push({ to: requirements.fee.payTo, minAmount: requirements.fee.amount });
+    }
+    const check = verifyTransactionPayments(
+      payload.payload.transaction,
+      env.STELLAR_NETWORK,
+      env.USDC_ISSUER,
+      expected,
+    );
+    if (!check.ok) {
+      throw new PaymentVerificationError(check.reason ?? "Payment does not satisfy requirements");
+    }
+    return check.payer ?? "";
+  }
 
+  return {
+    validate(payload, requirements): Promise<ValidatedPayment> {
+      const payer = assertPays(payload, requirements);
+      return Promise.resolve({ payer, payload, requirements });
+    },
+    async settle(validated): Promise<SettlementReceipt> {
+      const receipt = await settlement.submitSignedTransaction(
+        validated.payload.payload.transaction,
+      );
+      return {
+        txHash: receipt.txHash,
+        network,
+        settledAt: new Date().toISOString(),
+        payer: validated.payer || receipt.payer,
+        amount: validated.requirements.maxAmountRequired,
+        asset: "USDC",
+      };
+    },
+    // Combined path (validate + settle) for callers that settle up front.
+    async verify(payload, requirements): Promise<SettlementReceipt> {
+      const payer = assertPays(payload, requirements);
       const receipt = await settlement.submitSignedTransaction(payload.payload.transaction);
       return {
         txHash: receipt.txHash,
         network,
         settledAt: new Date().toISOString(),
-        payer: check.payer ?? receipt.payer,
-        // The builder's net share and asset, so a reader (e.g. an underwriter) can
-        // attribute this settlement's revenue straight from the receipt.
+        payer: payer || receipt.payer,
         amount: requirements.maxAmountRequired,
         asset: "USDC",
       };
