@@ -18,7 +18,7 @@ import { type ServableCapability } from "../capabilities/capability.repository";
 /** The slice of the container the gateway needs. */
 export type GatewayDeps = Pick<
   Container,
-  "capabilities" | "payments" | "verifier" | "gateway" | "keys" | "limiter"
+  "capabilities" | "payments" | "verifier" | "gateway" | "keys" | "limiter" | "idempotency"
 >;
 
 function json(body: unknown, status: number): Response {
@@ -116,122 +116,170 @@ export async function handleGatewayRequest(
     }
   }
 
-  // Take the marketplace fee out of the price (non-custodial: it's paid directly
-  // to Tael in the same tx). No fee address configured → builder keeps 100%.
-  const fee =
-    deps.gateway.feeAddress && deps.gateway.feeBps > 0
-      ? { payTo: deps.gateway.feeAddress, bps: deps.gateway.feeBps }
-      : undefined;
-  const split = splitFee(price, fee ? deps.gateway.feeBps : 0);
-
-  // API-key path: when the caller sends a Tael key (and hasn't already attached
-  // a signed payment), authenticate it and auto-pay from its linked Card, within
-  // the Card's caps. The wallet/x402 path below still works with no key.
-  let servedRequest = request;
-  const bearer = parseTaelKey(request.headers.get("authorization"));
-  if (bearer && !request.headers.has(PAYMENT_REQUEST_HEADER)) {
-    const key = await deps.keys.authorize(bearer);
-    if (!key) return json({ error: "Invalid or revoked API key" }, 401);
-    if (!key.card) {
-      return json({ error: "This API key has no Card linked. Link one to spend from it." }, 402);
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (idempotencyKey) {
+    const entry = await deps.idempotency.get(idempotencyKey);
+    if (entry) {
+      if (entry.status === "in-flight") {
+        return json({ error: "A request with this Idempotency-Key is already in progress." }, 409);
+      }
+      return new Response(entry.body, {
+        status: entry.status,
+        headers: entry.headers,
+      });
     }
-
-    const legs = [{ to: capability.payTo, amount: split.net }];
-    if (fee) legs.push({ to: fee.payTo, amount: split.fee });
-
-    const payment = await deps.keys.payForCall({ card: key.card, total: price, legs });
-    if (!payment.ok) return json({ error: payment.error }, payment.status);
-
-    const headers = new Headers(request.headers);
-    headers.set(PAYMENT_REQUEST_HEADER, payment.xPayment);
-    servedRequest = new Request(request, { headers });
-    void deps.keys.touch(key.id).catch(() => {});
+    await deps.idempotency.set(idempotencyKey, { status: "in-flight" });
   }
 
-  // Build the x402 challenge requirements once (used for the 402 and to validate).
-  const requirements = buildPaymentRequirements({
-    price,
-    payTo: capability.payTo,
-    issuer: deps.gateway.issuer,
-    network: deps.gateway.network,
-    resource: new URL(servedRequest.url).pathname,
-    description: capability.name,
-    fee,
-  });
-
-  // No payment attached → return the 402 challenge.
-  const paymentHeader = servedRequest.headers.get(PAYMENT_REQUEST_HEADER);
-  if (!paymentHeader) {
-    return json({ x402Version: X402_VERSION, accepts: [requirements] }, 402);
-  }
-
-  // Serve-then-settle: VALIDATE the payment (no on-chain submit), CALL the
-  // upstream, and only SETTLE if the upstream succeeded. A failed capability is
-  // therefore never charged — the signed transaction is simply never submitted.
-  let validated;
+  let response: Response;
   try {
-    const payload = decodePaymentHeader(paymentHeader);
-    validated = await validatePayment(payload, requirements, deps.verifier);
-  } catch (error) {
-    if (error instanceof PaymentVerificationError) {
-      return json(
-        { x402Version: X402_VERSION, accepts: [requirements], error: error.message },
-        402,
+    response = await (async () => {
+      // Take the marketplace fee out of the price (non-custodial: it's paid directly
+      // to Tael in the same tx). No fee address configured → builder keeps 100%.
+      const fee =
+        deps.gateway.feeAddress && deps.gateway.feeBps > 0
+          ? { payTo: deps.gateway.feeAddress, bps: deps.gateway.feeBps }
+          : undefined;
+      const split = splitFee(price, fee ? deps.gateway.feeBps : 0);
+
+      // API-key path: when the caller sends a Tael key (and hasn't already attached
+      // a signed payment), authenticate it and auto-pay from its linked Card, within
+      // the Card's caps. The wallet/x402 path below still works with no key.
+      let servedRequest = request;
+      const bearer = parseTaelKey(request.headers.get("authorization"));
+      if (bearer && !request.headers.has(PAYMENT_REQUEST_HEADER)) {
+        const key = await deps.keys.authorize(bearer);
+        if (!key) return json({ error: "Invalid or revoked API key" }, 401);
+        if (!key.card) {
+          return json(
+            { error: "This API key has no Card linked. Link one to spend from it." },
+            402,
+          );
+        }
+
+        const legs = [{ to: capability.payTo, amount: split.net }];
+        if (fee) legs.push({ to: fee.payTo, amount: split.fee });
+
+        const payment = await deps.keys.payForCall({ card: key.card, total: price, legs });
+        if (!payment.ok) return json({ error: payment.error }, payment.status);
+
+        const headers = new Headers(request.headers);
+        headers.set(PAYMENT_REQUEST_HEADER, payment.xPayment);
+        servedRequest = new Request(request, { headers });
+        void deps.keys.touch(key.id).catch(() => {});
+      }
+
+      // Build the x402 challenge requirements once (used for the 402 and to validate).
+      const requirements = buildPaymentRequirements({
+        price,
+        payTo: capability.payTo,
+        issuer: deps.gateway.issuer,
+        network: deps.gateway.network,
+        resource: new URL(servedRequest.url).pathname,
+        description: capability.name,
+        fee,
+      });
+
+      // No payment attached → return the 402 challenge.
+      const paymentHeader = servedRequest.headers.get(PAYMENT_REQUEST_HEADER);
+      if (!paymentHeader) {
+        return json({ x402Version: X402_VERSION, accepts: [requirements] }, 402);
+      }
+
+      // Serve-then-settle: VALIDATE the payment (no on-chain submit), CALL the
+      // upstream, and only SETTLE if the upstream succeeded. A failed capability is
+      // therefore never charged — the signed transaction is simply never submitted.
+      let validated;
+      try {
+        const payload = decodePaymentHeader(paymentHeader);
+        validated = await validatePayment(payload, requirements, deps.verifier);
+      } catch (error) {
+        if (error instanceof PaymentVerificationError) {
+          return json(
+            { x402Version: X402_VERSION, accepts: [requirements], error: error.message },
+            402,
+          );
+        }
+        throw error;
+      }
+
+      // Substitute `{payer}` in the URL with the validated caller so per-caller
+      // capabilities (e.g. TrustLine's `/agent/{payer}/available-credit`) hit the
+      // right resource. No token → unchanged.
+      const upstreamUrl = applyPayerToken(targetUrl, validated.payer);
+      let upstream: Response;
+      try {
+        upstream = await proxyToUpstream(capability, servedRequest, upstreamUrl, validated.payer);
+      } catch (error) {
+        console.error("[gateway] upstream call failed:", error);
+        return json({ error: "Upstream call failed" }, 502);
+      }
+
+      // The upstream failed → do NOT settle. Return its error untouched, unpaid.
+      if (!upstream.ok) {
+        return upstream;
+      }
+
+      // The call succeeded → settle the payment on-chain and record it.
+      let receipt;
+      try {
+        receipt = await settlePayment(validated, deps.verifier);
+      } catch (error) {
+        console.error("[gateway] settlement failed after a successful call:", error);
+        return json({ error: "Payment settlement failed. You were not charged." }, 402);
+      }
+
+      try {
+        await deps.payments.recordSettled({
+          capabilityId: capability.id,
+          capabilityName: capability.name,
+          payer: receipt.payer,
+          payee: capability.payTo,
+          amount: split.net,
+          fee: split.fee,
+          txHash: receipt.txHash,
+        });
+      } catch (error) {
+        console.error("[gateway] failed to record payment:", error);
+      }
+
+      const headers = new Headers(upstream.headers);
+      headers.set(
+        PAYMENT_RESPONSE_HEADER,
+        Buffer.from(JSON.stringify(receipt), "utf8").toString("base64"),
       );
+      return new Response(upstream.body, {
+        status: upstream.status,
+        statusText: upstream.statusText,
+        headers,
+      });
+    })();
+  } catch (error) {
+    if (idempotencyKey) {
+      await deps.idempotency.delete(idempotencyKey);
     }
     throw error;
   }
 
-  // Substitute `{payer}` in the URL with the validated caller so per-caller
-  // capabilities (e.g. TrustLine's `/agent/{payer}/available-credit`) hit the
-  // right resource. No token → unchanged.
-  const upstreamUrl = applyPayerToken(targetUrl, validated.payer);
-  let upstream: Response;
-  try {
-    upstream = await proxyToUpstream(capability, servedRequest, upstreamUrl, validated.payer);
-  } catch (error) {
-    console.error("[gateway] upstream call failed:", error);
-    return json({ error: "Upstream call failed" }, 502);
+  if (idempotencyKey) {
+    const hasReceipt = response.headers.has(PAYMENT_RESPONSE_HEADER);
+    if (!hasReceipt) {
+      await deps.idempotency.delete(idempotencyKey);
+    } else {
+      const bodyText = await response.clone().text();
+      const headers: Record<string, string> = {};
+      response.headers.forEach((val, key) => {
+        headers[key] = val;
+      });
+      await deps.idempotency.set(idempotencyKey, {
+        status: response.status,
+        headers,
+        body: bodyText,
+      });
+    }
   }
 
-  // The upstream failed → do NOT settle. Return its error untouched, unpaid.
-  if (!upstream.ok) {
-    return upstream;
-  }
-
-  // The call succeeded → settle the payment on-chain and record it.
-  let receipt;
-  try {
-    receipt = await settlePayment(validated, deps.verifier);
-  } catch (error) {
-    console.error("[gateway] settlement failed after a successful call:", error);
-    return json({ error: "Payment settlement failed. You were not charged." }, 402);
-  }
-
-  try {
-    await deps.payments.recordSettled({
-      capabilityId: capability.id,
-      capabilityName: capability.name,
-      payer: receipt.payer,
-      payee: capability.payTo,
-      amount: split.net,
-      fee: split.fee,
-      txHash: receipt.txHash,
-    });
-  } catch (error) {
-    console.error("[gateway] failed to record payment:", error);
-  }
-
-  const headers = new Headers(upstream.headers);
-  headers.set(
-    PAYMENT_RESPONSE_HEADER,
-    Buffer.from(JSON.stringify(receipt), "utf8").toString("base64"),
-  );
-  return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers,
-  });
+  return response;
 }
 
 /**
