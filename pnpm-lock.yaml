@@ -208,6 +208,34 @@ importers:
         specifier: 'catalog:'
         version: 3.2.6(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.23.0)
 
+  apps/capabilities:
+    dependencies:
+      '@hono/node-server':
+        specifier: 'catalog:'
+        version: 1.19.14(hono@4.12.27)
+      '@tael/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+      hono:
+        specifier: 'catalog:'
+        version: 4.12.27
+    devDependencies:
+      '@tael/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.0
+      tsup:
+        specifier: 'catalog:'
+        version: 8.5.1(jiti@1.21.7)(postcss@8.5.16)(tsx@4.23.0)(typescript@5.9.3)
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   apps/chat:
     dependencies:
       '@creit.tech/stellar-wallets-kit':
