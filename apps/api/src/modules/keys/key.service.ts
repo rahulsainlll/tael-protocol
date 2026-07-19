@@ -12,9 +12,11 @@ export interface AuthorizedCard {
   policy: SpendingPolicy | null;
 }
 
-/** A resolved API key: its id, plus the linked Card (null = nothing to spend from). */
+/** A resolved API key: its id, the owning publisher, and the linked Card. */
 export interface AuthorizedKey {
   id: string;
+  /** The user who owns this key — the publisher for capability writes. */
+  ownerId: string;
   card: AuthorizedCard | null;
 }
 

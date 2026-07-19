@@ -21,6 +21,7 @@ import {
   type ServableCapability,
 } from "../capabilities/capability.repository";
 import { KeyPaymentService, type AuthorizedKey, type KeyAuthorizer } from "../keys/key.service";
+import { CapabilityWriteService } from "../capabilities/capability-write";
 import { createServer } from "../../server";
 
 // The only novel-to-#55 dependency we can't run in a unit test is the on-chain
@@ -109,6 +110,7 @@ function buildContainer(
     wallets: new WalletService(new InMemoryWalletRepository()),
     payments,
     capabilities: fakeCapabilities(capability),
+    capabilityWrites: new CapabilityWriteService(undefined),
     keys,
     verifier: createMockVerifier(),
     limiter: testRateLimiter,
@@ -388,7 +390,8 @@ describe("capability gateway", () => {
 
   it("402s when the API key has no linked Card", async () => {
     const keys = fakeKeys({
-      authorize: (): Promise<AuthorizedKey | null> => Promise.resolve({ id: "k1", card: null }),
+      authorize: (): Promise<AuthorizedKey | null> =>
+        Promise.resolve({ id: "k1", ownerId: "u1", card: null }),
     });
     const { container } = buildContainer(CAPABILITY, undefined, keys);
     const app = createServer(container);
@@ -404,6 +407,7 @@ describe("capability gateway", () => {
       authorize: (): Promise<AuthorizedKey | null> =>
         Promise.resolve({
           id: "k1",
+          ownerId: "u1",
           card: {
             agentId: "a1",
             address: ADDRESS,
@@ -456,6 +460,7 @@ describe("capability gateway", () => {
       authorize: (): Promise<AuthorizedKey | null> =>
         Promise.resolve({
           id: "k1",
+          ownerId: "u1",
           card: {
             agentId: "a1",
             address: ADDRESS,
@@ -808,6 +813,7 @@ describe("capability gateway", () => {
         authorize: (): Promise<AuthorizedKey | null> =>
           Promise.resolve({
             id: "k1",
+            ownerId: "u1",
             card: {
               agentId: "a1",
               address: ADDRESS,

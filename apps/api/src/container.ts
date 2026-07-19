@@ -27,6 +27,7 @@ import {
   DbCapabilityRepository,
   type CapabilityRepository,
 } from "./modules/capabilities/capability.repository";
+import { CapabilityWriteService } from "./modules/capabilities/capability-write";
 import { DbApiKeyRepository } from "./modules/keys/key.repository";
 import { KeyPaymentService } from "./modules/keys/key.service";
 import { type RateLimiter, InMemoryRateLimiter } from "./modules/gateway/rate-limit";
@@ -41,6 +42,8 @@ export interface Container {
   wallets: WalletService;
   payments: PaymentService;
   capabilities: CapabilityRepository;
+  /** Write side of capabilities (publish/update/delete from the SDK/API). */
+  capabilityWrites: CapabilityWriteService;
   /** Authenticates Tael API keys and auto-pays from their linked Card. */
   keys: KeyPaymentService;
   verifier: PaymentVerifier;
@@ -138,6 +141,7 @@ export function createContainer(env: Env): Container {
     db ? new DbPaymentRepository(db) : new InMemoryPaymentRepository(),
   );
   const capabilities = new DbCapabilityRepository(db);
+  const capabilityWrites = new CapabilityWriteService(db);
 
   // API-key auth: resolve a key to its Card and sign payments from that Card's
   // hot wallet, within the Card's caps. Needs the same Stellar settings the
@@ -158,6 +162,7 @@ export function createContainer(env: Env): Container {
     wallets,
     payments,
     capabilities,
+    capabilityWrites,
     keys,
     verifier,
     limiter,

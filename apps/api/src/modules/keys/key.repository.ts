@@ -30,6 +30,7 @@ export class DbApiKeyRepository implements KeyAuthorizer {
     const [row] = await this.db
       .select({
         id: apiKeys.id,
+        ownerId: apiKeys.ownerId,
         revokedAt: apiKeys.revokedAt,
         agentId: apiKeys.agentId,
         address: wallets.address,
@@ -53,7 +54,7 @@ export class DbApiKeyRepository implements KeyAuthorizer {
             policy: row.policy,
           }
         : null;
-    return { id: row.id, card };
+    return { id: row.id, ownerId: row.ownerId, card };
   }
 
   async touch(keyId: string): Promise<void> {
