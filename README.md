@@ -15,6 +15,8 @@ Agents, MCP tools, and APIs supported. Payments settled in USDC on Stellar.
 </div>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/@tael/sdk"><img alt="npm version" src="https://img.shields.io/npm/v/@tael/sdk?logo=npm&label=%40tael%2Fsdk&color=000000" /></a>
+  <a href="https://github.com/rahulsainlll/tael-protocol/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/rahulsainlll/tael-protocol?logo=github&color=000000" /></a>
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-000000.svg" /></a>
   <a href="https://discord.gg/UtW9dZKwBW"><img alt="Discord community" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white" /></a>
   <a href="https://x.com/taelprotocol"><img alt="Follow @taelprotocol" src="https://img.shields.io/badge/Follow-%40taelprotocol-000000?logo=x&logoColor=white" /></a>
@@ -100,17 +102,17 @@ and shows up in your ledger.
 A Turborepo + pnpm monorepo. The payment engine is chain-agnostic; Stellar is the first settlement
 backend.
 
-| Package          | What it does                                                    |
-| ---------------- | --------------------------------------------------------------- |
-| `@tael/sdk`      | Wrap any handler with x402 payments — `tael()` / `createTael()` |
-| `@tael/payments` | x402 protocol wire format + non-custodial fee split             |
-| `@tael/stellar`  | Stellar settlement + the hardened on-chain payment verifier     |
-| `@tael/types`    | `Money` value object, zod schemas, shared errors                |
-| `@tael/auth`     | Sign-In-With-Stellar sessions (edge-safe, `jose`)               |
-| `@tael/database` | Drizzle schema + AES-256-GCM secret encryption                  |
-| `@tael/ui`       | Shared React components (shadcn/ui-based)                       |
-| `@tael/config`   | Shared TypeScript / Tailwind / ESLint config                    |
-| `@tael/claude`   | AI helpers (e.g. capability FAQ generation)                     |
+| Package                                                | What it does                                                                            |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| [`@tael/sdk`](https://www.npmjs.com/package/@tael/sdk) | Buy, publish, and sell capabilities from code: the `Tael` client + the `tael()` wrapper |
+| `@tael/payments`                                       | x402 protocol wire format + non-custodial fee split                                     |
+| `@tael/stellar`                                        | Stellar settlement + the hardened on-chain payment verifier                             |
+| `@tael/types`                                          | `Money` value object, zod schemas, shared errors                                        |
+| `@tael/auth`                                           | Sign-In-With-Stellar sessions (edge-safe, `jose`)                                       |
+| `@tael/database`                                       | Drizzle schema + AES-256-GCM secret encryption                                          |
+| `@tael/ui`                                             | Shared React components (shadcn/ui-based)                                               |
+| `@tael/config`                                         | Shared TypeScript / Tailwind / ESLint config                                            |
+| `@tael/claude`                                         | AI helpers (e.g. capability FAQ generation)                                             |
 
 Apps: **`web`** (marketing site), **`dashboard`** (the console), **`api`** (the capability gateway).
 

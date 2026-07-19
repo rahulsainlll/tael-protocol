@@ -1,5 +1,9 @@
 # @tael/sdk
 
+[![npm version](https://img.shields.io/npm/v/@tael/sdk?logo=npm&color=000000)](https://www.npmjs.com/package/@tael/sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@tael/sdk?color=000000)](https://www.npmjs.com/package/@tael/sdk)
+[![license](https://img.shields.io/npm/l/@tael/sdk?color=000000)](https://github.com/rahulsainlll/tael-protocol/blob/main/LICENSE)
+
 The official SDK for [Tael](https://taelprotocol.xyz), the payment layer for AI agents. Two sides in one package:
 
 - **Buy** any capability on the Tael marketplace with a single API key.
@@ -68,13 +72,13 @@ import { Tael } from "@tael/sdk";
 const tael = new Tael({ apiKey: process.env.TAEL_KEY! });
 
 const capability = await tael.publish({
-  name: "Nebula",
+  name: "Treasury Tools",
   kind: "mcp",
   description: "On-Stellar agentic actions and treasury tools for AI agents.",
-  endpoint: "https://nebula.example.com/api/tools",
+  endpoint: "https://api.example.com/tools",
   auth: { scheme: "header", header: "x-api-key" },
-  secret: process.env.NEBULA_TOKEN,
-  payTo: "GAUQW55J4QANRD4JPEBU4HL23L7SYWU2YSBQRBE6UU2UASOKZ2LZ4KZ5",
+  secret: process.env.MY_UPSTREAM_TOKEN,
+  payTo: "G...", // your Stellar payout address (needs a USDC trustline for Tael's issuer)
   operations: [
     { name: "Check balance", path: "/check-balance", method: "POST", price: "0.001" },
     { name: "Get address", path: "/get-address", method: "POST", price: "0" },
