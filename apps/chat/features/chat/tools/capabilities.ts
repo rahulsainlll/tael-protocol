@@ -45,29 +45,29 @@ function toPublicShape(row: Capability): PublicCapability {
 
 const SEARCH_LIMIT = 8;
 
-/** Keyword search over public capabilities, by name or description. */
+const PUBLIC_FILTER = and(
+  eq(capabilities.status, "verified"),
+  eq(capabilities.visibility, "public"),
+);
+
 export async function searchCapabilities(query: string): Promise<PublicCapability[]> {
   const like = `%${query.trim()}%`;
   const rows = await db
     .select()
     .from(capabilities)
     .where(
-      and(
-        eq(capabilities.visibility, "public"),
-        or(ilike(capabilities.name, like), ilike(capabilities.description, like)),
-      ),
+      and(PUBLIC_FILTER, or(ilike(capabilities.name, like), ilike(capabilities.description, like))),
     )
     .orderBy(desc(capabilities.createdAt))
     .limit(SEARCH_LIMIT);
   return rows.map(toPublicShape);
 }
 
-/** Full public detail for one capability, by slug. Null if not found/not public. */
 export async function getCapabilityBySlug(slug: string): Promise<PublicCapability | null> {
   const rows = await db
     .select()
     .from(capabilities)
-    .where(and(eq(capabilities.slug, slug), eq(capabilities.visibility, "public")))
+    .where(and(eq(capabilities.slug, slug), PUBLIC_FILTER))
     .limit(1);
   return rows[0] ? toPublicShape(rows[0]) : null;
 }
