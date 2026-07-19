@@ -279,6 +279,32 @@ describe("capability gateway", () => {
     expect(ledger[0]?.payer).toContain("mock_payer_");
   });
 
+  it("does NOT charge when the upstream fails (serve-then-settle)", async () => {
+    // The upstream rejects the call (e.g. a 401 from the capability's server).
+    const upstream = vi.fn<typeof fetch>(
+      async () =>
+        new Response(JSON.stringify({ reason: "unauthorized" }), {
+          status: 401,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    vi.stubGlobal("fetch", upstream);
+
+    const { container, payments } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+
+    const res = await app.request("/c/predict-age", {
+      method: "POST",
+      headers: { [PAYMENT_REQUEST_HEADER]: paymentHeader() },
+    });
+
+    // The buyer sees the upstream's error, unchanged…
+    expect(res.status).toBe(401);
+    // …and crucially, NO payment settled and NO receipt was attached.
+    expect(res.headers.get(PAYMENT_RESPONSE_HEADER)).toBeNull();
+    expect(await payments.list()).toHaveLength(0);
+  });
+
   it("splits out the marketplace fee when one is configured", async () => {
     const feeAddress = "GC62IXD4GCRMGDR34NIWG3TVCECGBJHVW3UW7URX4F6CF54WIOMSLBRK";
     const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
