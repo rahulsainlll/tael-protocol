@@ -107,7 +107,10 @@ export interface Orderbook {
 }
 
 /** Turn `native` or `CODE:ISSUER` into Horizon's asset query params for a side. */
-function assetParams(prefix: "selling" | "buying", spec: string): Record<string, string> {
+function assetParams(
+  prefix: "selling" | "buying" | "base" | "counter",
+  spec: string,
+): Record<string, string> {
   if (spec === "native" || spec === "XLM") return { [`${prefix}_asset_type`]: "native" };
   const [code, issuer] = spec.split(":");
   if (!code || !issuer) throw new Error("bad asset");
@@ -139,6 +142,67 @@ export async function getOrderbook(
     buying,
     bids: (book.bids ?? []).map(trim),
     asks: (book.asks ?? []).map(trim),
+  };
+}
+
+export interface Trade {
+  id: string;
+  ledgerCloseTime: string;
+  baseAmount: string;
+  counterAmount: string;
+  baseIsSeller: boolean;
+  price: { n: string; d: string } | null;
+}
+
+export interface TradesResult {
+  base: string;
+  counter: string;
+  trades: Trade[];
+}
+
+interface HorizonTradeRecord {
+  id: string;
+  ledger_close_time: string;
+  base_amount: string;
+  counter_amount: string;
+  base_is_seller: boolean;
+  price?: {
+    n: number | string;
+    d: number | string;
+  };
+}
+
+/** Recent executed trades for a pair. Throws "bad asset" on a malformed spec. */
+export async function getTrades(
+  base: string,
+  counter: string,
+  limit: number,
+): Promise<TradesResult> {
+  const params = new URLSearchParams({
+    ...assetParams("base", base),
+    ...assetParams("counter", counter),
+    order: "desc",
+    limit: String(limit),
+  });
+  const { ok, data } = await horizon(`/trades?${params}`);
+  if (!ok) throw new Error("horizon unavailable");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonTradeRecord[] } })?._embedded?.records ?? [];
+
+  const trades: Trade[] = records.map((t) => ({
+    id: t.id,
+    ledgerCloseTime: t.ledger_close_time,
+    baseAmount: t.base_amount,
+    counterAmount: t.counter_amount,
+    baseIsSeller: t.base_is_seller,
+    price: t.price ? { n: String(t.price.n), d: String(t.price.d) } : null,
+  }));
+
+  return {
+    base,
+    counter,
+    trades,
   };
 }
 
