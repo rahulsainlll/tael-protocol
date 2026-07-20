@@ -4,13 +4,16 @@
 //   TAEL_KEY=tael_live_… PAY_TO=G… CAPABILITIES_URL=https://… \
 //     pnpm --filter capabilities publish:capabilities
 //
-// It publishes each capability defined below, then prints its slug. Re-running
-// re-publishes; use the dashboard (or tael.updateCapability) to change a live one.
+// It upserts each capability defined below (by name): a first run publishes it,
+// and every re-run UPDATES the live one in place. Re-running is safe — it never
+// creates a duplicate and never resets a granted Verified badge.
 import { Tael, TaelError, type PublishCapabilityInput } from "@tael/sdk";
 
 const apiKey = process.env.TAEL_KEY;
 const payTo = process.env.PAY_TO;
-const endpoint = process.env.CAPABILITIES_URL ?? "http://localhost:3004";
+// Trim any trailing slash so operation paths (e.g. /stellar/balance) don't
+// produce a double slash when appended to the upstream endpoint.
+const endpoint = (process.env.CAPABILITIES_URL ?? "http://localhost:3004").replace(/\/+$/, "");
 
 if (!apiKey || !payTo) {
   console.error("Set TAEL_KEY and PAY_TO (and CAPABILITIES_URL to the deployed service).");
@@ -32,7 +35,7 @@ const CAPABILITIES: PublishCapabilityInput[] = [
         path: "/stellar/balance",
         method: "GET",
         price: "0",
-        sampleRequest: "address=GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA",
+        sampleRequest: "address=<stellar-account-address>",
         sampleResponse: `{ "address": "G…", "balances": [{ "asset": "XLM", "issuer": null, "balance": "100.5" }] }`,
       },
       {
@@ -40,7 +43,7 @@ const CAPABILITIES: PublishCapabilityInput[] = [
         path: "/stellar/account",
         method: "GET",
         price: "0",
-        sampleRequest: "address=GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA",
+        sampleRequest: "address=<stellar-account-address>",
         sampleResponse: `{ "id": "G…", "sequence": "123", "homeDomain": null, "numTrustlines": 2 }`,
       },
       {
@@ -64,8 +67,18 @@ const CAPABILITIES: PublishCapabilityInput[] = [
 
 const tael = new Tael({ apiKey });
 
+// What we already publish, so a re-run updates in place instead of duplicating.
+const owned = await tael.myCapabilities();
+
 for (const manifest of CAPABILITIES) {
   try {
+    const existing = owned.find((c) => c.name === manifest.name);
+    if (existing) {
+      const result = await tael.updateCapability(existing.id, manifest);
+      console.log(`Updated "${manifest.name}" → ${result.slug}`);
+      console.log(`  https://app.taelprotocol.xyz/marketplace/${result.slug}`);
+      continue;
+    }
     const result = await tael.publish(manifest);
     console.log(`Published "${manifest.name}" → ${result.slug} (${result.status})`);
     console.log(`  https://app.taelprotocol.xyz/marketplace/${result.slug}`);
