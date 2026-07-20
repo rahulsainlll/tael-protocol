@@ -96,6 +96,8 @@ export async function runCapability(input: {
   method?: string;
   /** Request body to forward to the capability (e.g. the tool selector for MCP). */
   body?: string;
+  /** Query string for GET calls (e.g. `address=G…`), appended to the URL. */
+  query?: string;
 }): Promise<RunResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Not signed in." };
@@ -118,9 +120,12 @@ export async function runCapability(input: {
   // narrowing through, so tryDrawTrustLineCredit takes `secretEnc` explicitly.
   const secretEnc = agent.secretEnc;
 
-  const url = input.operation
+  const base = input.operation
     ? `${API_URL}/c/${input.slug}/${input.operation}`
     : `${API_URL}/c/${input.slug}`;
+  // Append the caller-provided query string (e.g. ?address=G…) for GET-style ops.
+  const qs = input.query?.trim().replace(/^\?/, "");
+  const url = qs ? `${base}?${qs}` : base;
   const method = (input.method || "GET").toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD" && Boolean(input.body?.trim());
   const bodyInit = hasBody

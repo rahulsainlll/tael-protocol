@@ -53,6 +53,14 @@ export function RunCapabilityDialog({
   const runLabel = operation?.name;
   const priceNum = Number(runPrice);
 
+  // GET ops take query params (e.g. address=G…); others take a JSON body. Prefill
+  // the input from the operation's sample so the caller can just edit it.
+  const opMethod = (operation?.method || "GET").toUpperCase();
+  const isGet = opMethod === "GET" || opMethod === "HEAD";
+  const sample = operation?.body ?? "";
+  const initialInput = isGet ? (sample.includes("?") ? sample.split("?")[1]! : "") : sample;
+  const [requestInput, setRequestInput] = useState(initialInput);
+
   // Only agents that can actually pay for this call.
   const eligible = useMemo(
     () =>
@@ -75,6 +83,7 @@ export function RunCapabilityDialog({
   function reset() {
     setResult(null);
     setQuery("");
+    setRequestInput(initialInput);
   }
 
   function run() {
@@ -86,7 +95,8 @@ export function RunCapabilityDialog({
           slug,
           operation: operation?.slug,
           method: operation?.method,
-          body: operation?.body,
+          body: isGet ? undefined : requestInput,
+          query: isGet ? requestInput : undefined,
         }),
       );
     });
@@ -196,6 +206,22 @@ export function RunCapabilityDialog({
                   <p className="py-4 text-center text-sm text-muted-foreground">No match.</p>
                 ) : null}
               </div>
+
+              {/* Request input — query params for GET, a JSON body otherwise. */}
+              {operation ? (
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {isGet ? "Parameters" : "Request body"}
+                  </span>
+                  <textarea
+                    value={requestInput}
+                    onChange={(e) => setRequestInput(e.target.value)}
+                    rows={isGet ? 2 : 3}
+                    placeholder={isGet ? "address=G…" : '{ "key": "value" }'}
+                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs"
+                  />
+                </label>
+              ) : null}
 
               <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-3 py-2.5 text-sm">
                 <span className="text-muted-foreground">This call costs</span>
