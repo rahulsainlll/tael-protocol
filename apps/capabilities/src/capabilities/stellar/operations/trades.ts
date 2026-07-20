@@ -3,7 +3,7 @@ import { getTrades } from "../horizon";
 
 /** GET /stellar/trades?base=native&counter=USDC:G...&limit=10 — recent executed trades for a pair. */
 export const operation: Operation = {
-  name: "Recent Trades",
+  name: "Trades",
   path: "/stellar/trades",
   method: "GET",
   price: "0",
