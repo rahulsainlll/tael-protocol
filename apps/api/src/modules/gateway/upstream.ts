@@ -112,10 +112,21 @@ export async function proxyToUpstream(
   const method = request.method.toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD";
 
+  // Forward the caller's query string to the upstream (e.g. ?address=G…) so a
+  // capability can read GET params. Only rewrite the URL when the caller sent a
+  // query, so URLs without one are passed through byte-for-byte as before.
+  let finalUrl = targetUrl;
+  const callerQuery = new URL(request.url).searchParams;
+  if ([...callerQuery.keys()].length > 0) {
+    const merged = new URL(targetUrl);
+    callerQuery.forEach((value, key) => merged.searchParams.set(key, value));
+    finalUrl = merged.toString();
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const upstream = await fetch(targetUrl, {
+    const upstream = await fetch(finalUrl, {
       method,
       headers,
       body: hasBody ? await request.arrayBuffer() : undefined,
