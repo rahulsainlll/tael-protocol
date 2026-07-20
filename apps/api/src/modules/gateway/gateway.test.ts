@@ -219,6 +219,21 @@ describe("capability gateway", () => {
     expect(upstream.mock.calls[0]?.[0]).toBe("https://api.example.com/age/premium");
   });
 
+  it("forwards the caller's query string to the upstream", async () => {
+    const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", upstream);
+
+    const { container } = buildContainer(CAPABILITY);
+    const app = createServer(container);
+    // A free op with a query param (e.g. stellar/balance?address=G…).
+    await app.request("/c/predict-age/ping?address=GABC&limit=5");
+
+    const calledUrl = String(upstream.mock.calls[0]?.[0]);
+    expect(calledUrl).toContain("address=GABC");
+    expect(calledUrl).toContain("limit=5");
+    expect(calledUrl).toContain("/age/ping");
+  });
+
   it("substitutes the {payer} token in the upstream URL with the caller's address", async () => {
     const upstream = vi.fn<typeof fetch>(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", upstream);
