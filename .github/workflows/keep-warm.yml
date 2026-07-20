@@ -1,0 +1,43 @@
+name: Keep warm
+
+# Both Render web services (the gateway API and the first-party capabilities
+# service) run on the free tier, which spins a service down after ~15 min idle.
+# The next request then cold-starts — a few seconds of 5xx before it is back,
+# which is what makes the marketplace "Run" button occasionally fail. This pings
+# each service's /health every ~10 min so real traffic never lands on a cold
+# service. The ping itself is what wakes it; the retries just wait out a cold
+# start so a wake-up does not fail the run. If a service is genuinely down, the
+# job goes red after the retries are exhausted — a useful signal.
+#
+# Scheduled workflows only run from the default branch, so this takes effect once
+# merged to main. GitHub's scheduler is best-effort and can run a few minutes
+# late; 10 min leaves headroom under Render's 15 min idle window.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+# A wake-up ping is pointless to stack; never run two at once, and let a late
+# run finish rather than cancelling it.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gateway
+            url: https://tael-protocol.onrender.com/health
+          - name: capabilities
+            url: https://tael-first-party-capabilities.onrender.com/health
+    steps:
+      - name: Ping ${{ matrix.name }} /health
+        run: |
+          curl -fsS --max-time 90 \
+            --retry 5 --retry-delay 15 --retry-all-errors \
+            "${{ matrix.url }}"
