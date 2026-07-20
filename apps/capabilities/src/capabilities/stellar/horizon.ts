@@ -314,3 +314,62 @@ interface HorizonAssetRecord {
     auth_clawback_enabled?: boolean;
   };
 }
+
+export interface PaymentItem {
+  id: string;
+  type: string;
+  from: string | null;
+  to: string | null;
+  asset: string;
+  amount: string;
+  createdAt: string;
+  transactionHash: string;
+}
+
+export interface AccountPaymentsResult {
+  address: string;
+  payments: PaymentItem[];
+}
+
+interface HorizonPaymentRecord {
+  id: string;
+  type: string;
+  created_at: string;
+  transaction_hash: string;
+  from?: string;
+  to?: string;
+  funder?: string;
+  account?: string;
+  into?: string;
+  source_account?: string;
+  amount?: string;
+  starting_balance?: string;
+  asset_type?: string;
+  asset_code?: string;
+  asset_issuer?: string;
+}
+
+/** Recent payments in/out of an account. */
+export async function getPayments(address: string, limit: number): Promise<AccountPaymentsResult> {
+  const { ok, data } = await horizon(`/accounts/${address}/payments?order=desc&limit=${limit}`);
+  if (!ok) throw new Error("account not found");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonPaymentRecord[] } })?._embedded?.records ?? [];
+
+  const payments: PaymentItem[] = records.map((r) => ({
+    id: r.id,
+    type: r.type,
+    from: r.from ?? r.funder ?? r.source_account ?? null,
+    to: r.to ?? r.account ?? r.into ?? null,
+    asset: r.asset_type === "native" ? "XLM" : (r.asset_code ?? "?"),
+    amount: r.amount ?? r.starting_balance ?? "0",
+    createdAt: r.created_at,
+    transactionHash: r.transaction_hash,
+  }));
+
+  return {
+    address,
+    payments,
+  };
+}
