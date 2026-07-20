@@ -8,3 +8,6 @@ pnpm-lock.yaml
 
 # Drizzle-generated migrations + metadata (owned by drizzle-kit)
 packages/database/drizzle
+
+# Generated capability registry
+**/*.generated.ts

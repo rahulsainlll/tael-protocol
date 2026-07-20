@@ -1,12 +1,12 @@
 # Tael first-party capabilities
 
-A small service of useful, **Stellar-native** endpoints that Tael builds, hosts,
-and publishes to the marketplace. These seed the marketplace with real, verified
-tools that any agent can use on day one, and they dogfood the SDK publish flow.
+A small service of useful endpoints that Tael builds, hosts, and publishes to the
+marketplace. These seed the marketplace with real, verified tools that any agent
+can use on day one, and they dogfood the SDK publish flow.
 
 ## What lives here
 
-Each endpoint is published as an operation of a Tael capability. Today:
+Each capability is a self-contained folder under `src/capabilities/`. Today:
 
 | Capability | Operation                         | What it does                                                |
 | ---------- | --------------------------------- | ----------------------------------------------------------- |
@@ -16,35 +16,65 @@ Each endpoint is published as an operation of a Tael capability. Today:
 
 All read-only, all public, all free.
 
+## Structure
+
+```
+src/
+  index.ts              boot (binds $PORT)
+  server.ts             thin: /health + mounts every capability's routes
+  publish.ts            thin: upserts every capability's manifest
+  types.ts              the CapabilityModule shape
+  registry.generated.ts collected capabilities (generated, git-ignored)
+  capabilities/
+    stellar/
+      index.ts          exports { routes, manifest }
+      routes.ts         Hono routes: /stellar/balance, /account, /tx
+      manifest.ts       the marketplace manifest
+      horizon.ts        its own helpers
+scripts/
+  gen-registry.mjs      scans capabilities/* → writes registry.generated.ts
+```
+
+`server.ts` and `publish.ts` never grow: they loop over the registry, which is
+regenerated from the folders before every dev / build / typecheck / publish. So
+**adding a capability touches only its own new folder** — no shared file to edit,
+which means capability PRs can't conflict with each other.
+
 ## The rules (what belongs here)
 
 A first-party capability must:
 
-1. **Be Stellar-native and genuinely useful to an agent.** On-chain reads,
-   quotes, account/asset lookups. If it isn't about Stellar, it doesn't belong
-   here. Keep the surface focused.
+1. **Be genuinely useful to an agent, and self-contained.** Stellar reads are the
+   heart of it (quotes, account/asset lookups), but any capability that runs on
+   public data or pure compute with **no secret** is welcome (e.g. FX rates,
+   address validation). If it needs an API key, it is a third-party capability
+   (published via the SDK from its own repo), not a first-party one.
 2. **Be read-only or otherwise safe.** No destructive or state-changing action
    without an explicit, well-understood design. These run unauthenticated behind
    Tael's payment gate, so they must be safe to call.
-3. **Need no secrets.** Everything here talks to public infrastructure (Horizon).
-   If an endpoint needs an API key, it is a third-party capability, not a
-   first-party one.
+3. **Need no secrets.** Everything here talks to public infrastructure. Anything
+   requiring a key belongs in a publisher's own repo (Tael encrypts upstream
+   secrets there).
 4. **Return clean, documented JSON.** Small, stable shapes. Include a
-   `sampleRequest` and `sampleResponse` in the publish manifest.
-5. **Be listed in the table above and in `src/publish.ts`.** The manifest in
-   `publish.ts` is the source of truth for what is published.
-6. **Price at 0 unless there is a real per-call cost.** First-party utilities are
-   free to seed the marketplace; Tael earns on the marketplace fee of other
-   capabilities, not on these.
+   `sampleRequest` and `sampleResponse` in the manifest.
+5. **Price at 0 unless there is a real per-call cost.** First-party utilities are
+   free to seed the marketplace.
 
 ## How to add one
 
-1. Add the handler in `src/server.ts` (and a helper in `src/stellar.ts` if it
-   reads the chain).
-2. Add its operation to the `Stellar` manifest in `src/publish.ts` (name,
-   path, method, price, sample request/response).
-3. `pnpm --filter capabilities typecheck` and run it locally (`pnpm dev`).
-4. Deploy, then publish (below).
+Copy the `stellar/` folder as a template. To add, say, an `fx` capability:
+
+1. `mkdir src/capabilities/fx` and add:
+   - `routes.ts` — a Hono app with your routes (`export const routes`).
+   - `manifest.ts` — the marketplace manifest (`export const manifest`), with a
+     `sampleRequest` / `sampleResponse` per operation.
+   - `index.ts` — `export const capability: CapabilityModule = { routes, manifest }`.
+   - any helpers (e.g. `rates.ts`).
+2. That's it. The registry picks it up automatically. Run
+   `pnpm --filter capabilities typecheck` and `pnpm --filter capabilities dev`,
+   then `curl localhost:3004/fx/rates`.
+3. Open a PR. A maintainer merges, the service redeploys, and the publish step
+   below makes it live.
 
 ## Deploy and publish
 
@@ -56,8 +86,6 @@ A first-party capability must:
 | Start command | `pnpm --filter capabilities start`                                                                   |
 | Environment   | `STELLAR_HORIZON_URL` (optional, defaults to testnet). `PORT` is injected.                           |
 
-It binds `$PORT` and exposes `/health`, `/stellar/balance`, `/stellar/account`, `/stellar/tx`.
-
 **2. Publish the capabilities to Tael** with the SDK, pointing at the deployed URL:
 
 ```bash
@@ -67,12 +95,13 @@ CAPABILITIES_URL=https://<your-render-service>.onrender.com \
   pnpm --filter capabilities publish:capabilities
 ```
 
-This creates the `stellar` capability (operations `stellar/balance`, `stellar/account`,
-`stellar/tx`). They go live as `pending`; a Tael admin grants Verified from the marketplace.
-An agent then calls them with one key: `await tael.get("stellar/balance", { query: { address } })`.
+This upserts every capability in the registry (create on first run, update in
+place after). They go live as `pending`; a Tael admin grants Verified from the
+marketplace. An agent then calls them with one key:
+`await tael.get("stellar/balance", { query: { address } })`.
 
 ## Want a capability that isn't here?
 
-Open an issue labelled `good-first-capability` describing the Stellar tool you
-want. Contributors can build it here and we publish it. This is how the
+Open an issue labelled `good-first-capability` describing the tool you want.
+Contributors build it in its own folder and we publish it. This is how the
 first-party surface grows.
