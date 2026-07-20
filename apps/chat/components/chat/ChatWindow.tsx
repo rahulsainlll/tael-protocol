@@ -36,7 +36,8 @@ export function ChatWindow({ address }: { address: string }) {
         }),
       });
 
-      if (!response.ok || !response.body) throw new Error(`Chat request failed (${response.status})`);
+      if (!response.ok || !response.body)
+        throw new Error(`Chat request failed (${response.status})`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
