@@ -13,32 +13,52 @@ Each capability is a self-contained folder under `src/capabilities/`. Today:
 | Stellar    | `GET /stellar/balance?address=G…` | Balances (XLM + assets) for an account                      |
 | Stellar    | `GET /stellar/account?address=G…` | Account details: sequence, signers, home domain, trustlines |
 | Stellar    | `GET /stellar/tx?hash=…`          | A settled transaction by its hash                           |
+| Stellar    | `GET /stellar/status`             | Latest ledger, protocol version, base fee and reserve       |
+| Stellar    | `GET /stellar/orderbook?…`        | Top bids/asks for a DEX pair                                |
+| FX Rates   | `GET /fx/rates?base=USD`          | Reference fiat exchange rates (non-Stellar utility)         |
 
 All read-only, all public, all free.
 
 ## Structure
+
+A capability is one folder (one marketplace card). Each of its operations is one
+file under `operations/`.
 
 ```
 src/
   index.ts              boot (binds $PORT)
   server.ts             thin: /health + mounts every capability's routes
   publish.ts            thin: upserts every capability's manifest
-  types.ts              the CapabilityModule shape
+  assemble.ts           builds { routes, manifest } from meta + operations
+  types.ts              CapabilityMeta, Operation, CapabilityModule
   registry.generated.ts collected capabilities (generated, git-ignored)
   capabilities/
     stellar/
-      index.ts          exports { routes, manifest }
-      routes.ts         Hono routes: /stellar/balance, /account, /tx
-      manifest.ts       the marketplace manifest
-      horizon.ts        its own helpers
+      capability.ts     metadata: name "Stellar", kind, description, faqs
+      operations/
+        balance.ts      one file per operation: manifest fields + handler
+        account.ts
+        tx.ts
+        status.ts
+        orderbook.ts
+      horizon.ts        shared helpers for its operations
+    fx/
+      capability.ts
+      operations/
+        rates.ts
+      rates.ts          helper
 scripts/
   gen-registry.mjs      scans capabilities/* → writes registry.generated.ts
 ```
 
 `server.ts` and `publish.ts` never grow: they loop over the registry, which is
-regenerated from the folders before every dev / build / typecheck / publish. So
-**adding a capability touches only its own new folder** — no shared file to edit,
-which means capability PRs can't conflict with each other.
+regenerated before every dev / build / typecheck / publish. Because both
+capabilities **and** operations are auto-collected:
+
+- **adding an operation** to a capability = one new file in its `operations/`
+- **adding a capability** = one new folder with a `capability.ts`
+
+Either way you touch only your own new file, so PRs never conflict with each other.
 
 ## The rules (what belongs here)
 
@@ -60,21 +80,32 @@ A first-party capability must:
 5. **Price at 0 unless there is a real per-call cost.** First-party utilities are
    free to seed the marketplace.
 
-## How to add one
+## How to add an operation (most common)
 
-Copy the `stellar/` folder as a template. To add, say, an `fx` capability:
+Adding an operation to an existing capability, e.g. `/stellar/asset` under
+Stellar. Copy an operation file as your template:
 
-1. `mkdir src/capabilities/fx` and add:
-   - `routes.ts` — a Hono app with your routes (`export const routes`).
-   - `manifest.ts` — the marketplace manifest (`export const manifest`), with a
-     `sampleRequest` / `sampleResponse` per operation.
-   - `index.ts` — `export const capability: CapabilityModule = { routes, manifest }`.
-   - any helpers (e.g. `rates.ts`).
-2. That's it. The registry picks it up automatically. Run
-   `pnpm --filter capabilities typecheck` and `pnpm --filter capabilities dev`,
-   then `curl localhost:3004/fx/rates`.
-3. Open a PR. A maintainer merges, the service redeploys, and the publish step
-   below makes it live.
+1. `cp src/capabilities/stellar/operations/status.ts src/capabilities/stellar/operations/asset.ts`
+2. Edit `asset.ts` — set `name`, `path`, `price: "0"`, `sampleRequest`,
+   `sampleResponse`, and the `handler`. Put any fetch logic in the capability's
+   helper (`stellar/horizon.ts`).
+3. That's it. The registry picks the file up automatically, nothing else to edit.
+   Run `pnpm --filter capabilities typecheck` and `pnpm --filter capabilities dev`,
+   then `curl "localhost:3004/stellar/asset?code=USDC&issuer=G…"`.
+4. Open a PR (`Closes #<issue>`). Because it's a new file, it can't conflict with
+   anyone else's operation.
+
+## How to add a new capability
+
+A new domain (a new marketplace card), e.g. `fx`:
+
+1. `mkdir -p src/capabilities/<name>/operations`
+2. Add `capability.ts` — `export const meta: CapabilityMeta = { name, kind,
+description, faqs }`.
+3. Add one file per operation under `operations/` (see above), plus any helpers.
+4. The registry picks up the folder automatically. Typecheck, run locally, open a PR.
+
+Both flows are checked by CI, and a maintainer publishes after merge (below).
 
 ## Deploy and publish
 
