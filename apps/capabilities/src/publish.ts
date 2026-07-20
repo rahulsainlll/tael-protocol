@@ -20,7 +20,7 @@ if (!apiKey || !payTo) {
 /** The first-party capabilities, as SDK publish manifests. Stellar-native, free. */
 const CAPABILITIES: PublishCapabilityInput[] = [
   {
-    name: "Stellar Tools",
+    name: "Stellar",
     kind: "api",
     description:
       "Read-only Stellar lookups for AI agents: account balances, account details, and settled transactions. Free.",
