@@ -263,6 +263,217 @@ export async function getAssetInfo(code: string, issuer: string): Promise<AssetI
   };
 }
 
+// --- Paid reads: quote, explain, portfolio ---------------------------------
+
+/** Canonical asset spec for path queries: "native" or "CODE:ISSUER". */
+function canonicalAsset(spec: string): string {
+  if (spec === "native" || spec === "XLM") return "native";
+  const [code, issuer] = spec.split(":");
+  if (!code || !issuer) throw new Error("bad asset");
+  return `${code}:${issuer}`;
+}
+
+/** Add a `<prefix>_asset_type/code/issuer` triple for a source-side asset. */
+function sourceAssetParams(spec: string): Record<string, string> {
+  if (spec === "native" || spec === "XLM") return { source_asset_type: "native" };
+  const [code, issuer] = spec.split(":");
+  if (!code || !issuer) throw new Error("bad asset");
+  return {
+    source_asset_type: code.length <= 4 ? "credit_alphanum4" : "credit_alphanum12",
+    source_asset_code: code,
+    source_asset_issuer: issuer,
+  };
+}
+
+export interface Quote {
+  source: string;
+  sourceAmount: string;
+  dest: string;
+  destAmount: string;
+  /** The intermediate hops (asset codes) the best route passes through. */
+  path: string[];
+}
+
+/**
+ * Best strict-send quote: send exactly `amount` of `source`, receive `dest`.
+ * Picks the route with the highest destination amount. Throws "no path" when no
+ * route exists (thin liquidity), "bad asset" on a malformed spec.
+ */
+export async function getQuote(source: string, dest: string, amount: string): Promise<Quote> {
+  const params = new URLSearchParams({
+    ...sourceAssetParams(source),
+    source_amount: amount,
+    destination_assets: canonicalAsset(dest),
+  });
+  const { ok, data } = await horizon(`/paths/strict-send?${params}`);
+  if (!ok) throw new Error("horizon unavailable");
+  const records = (data as { _embedded?: { records?: HorizonPath[] } })._embedded?.records ?? [];
+  const best = records.reduce<HorizonPath | null>(
+    (b, r) => (!b || Number(r.destination_amount) > Number(b.destination_amount) ? r : b),
+    null,
+  );
+  if (!best) throw new Error("no path");
+  return {
+    source,
+    sourceAmount: best.source_amount,
+    dest,
+    destAmount: best.destination_amount,
+    path: (best.path ?? []).map((p) => (p.asset_type === "native" ? "XLM" : (p.asset_code ?? "?"))),
+  };
+}
+
+export interface ExplainedOp {
+  type: string;
+  summary: string;
+}
+export interface TxExplanation {
+  hash: string;
+  successful: boolean;
+  createdAt: string;
+  feeCharged: string;
+  summary: string;
+  operations: ExplainedOp[];
+}
+
+/** A short, human-readable form of a Stellar address: `GABC…WXYZ`. */
+function shortAddr(a?: string): string {
+  return a ? `${a.slice(0, 4)}…${a.slice(-4)}` : "someone";
+}
+function opAsset(type?: string, code?: string): string {
+  return type === "native" ? "XLM" : (code ?? "an asset");
+}
+
+/** Turn one Horizon operation into a plain-English line. */
+function explainOp(op: HorizonOp): ExplainedOp {
+  switch (op.type) {
+    case "payment":
+      return {
+        type: op.type,
+        summary: `${shortAddr(op.from)} paid ${op.amount} ${opAsset(op.asset_type, op.asset_code)} to ${shortAddr(op.to)}`,
+      };
+    case "create_account":
+      return {
+        type: op.type,
+        summary: `${shortAddr(op.funder)} created account ${shortAddr(op.account)} with ${op.starting_balance} XLM`,
+      };
+    case "path_payment_strict_send":
+    case "path_payment_strict_receive":
+      return {
+        type: op.type,
+        summary: `${shortAddr(op.from)} swapped ${op.source_amount ?? "?"} ${opAsset(op.source_asset_type, op.source_asset_code)} for ${op.amount} ${opAsset(op.asset_type, op.asset_code)} to ${shortAddr(op.to)}`,
+      };
+    case "change_trust":
+      return {
+        type: op.type,
+        summary: `${shortAddr(op.trustor ?? op.source_account)} set a trustline for ${opAsset(op.asset_type, op.asset_code)}`,
+      };
+    case "manage_sell_offer":
+    case "manage_buy_offer":
+    case "create_passive_sell_offer":
+      return { type: op.type, summary: `${shortAddr(op.source_account)} placed a DEX offer` };
+    default:
+      return {
+        type: op.type,
+        summary: `${shortAddr(op.source_account)} performed ${op.type.replace(/_/g, " ")}`,
+      };
+  }
+}
+
+/** Decode a settled transaction into a readable summary of what it did. */
+export async function explainTransaction(hash: string): Promise<TxExplanation> {
+  const tx = await horizon(`/transactions/${hash}`);
+  if (!tx.ok) throw new Error("transaction not found");
+  const t = tx.data as HorizonTx;
+  const opsRes = await horizon(`/transactions/${hash}/operations?limit=50`);
+  const records =
+    (opsRes.data as { _embedded?: { records?: HorizonOp[] } })._embedded?.records ?? [];
+  const operations = records.map(explainOp);
+  const summary =
+    `Transaction ${t.successful ? "succeeded" : "failed"} with ` +
+    `${operations.length} operation${operations.length === 1 ? "" : "s"}` +
+    (operations.length ? `: ${operations.map((o) => o.summary).join("; ")}.` : ".");
+  return {
+    hash: t.hash,
+    successful: t.successful,
+    createdAt: t.created_at,
+    feeCharged: t.fee_charged,
+    summary,
+    operations,
+  };
+}
+
+/** The USDC asset portfolio values are quoted in. Overridable per deployment. */
+const USDC_ASSET =
+  process.env.USDC_ASSET ?? "USDC:GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA";
+
+export interface Holding {
+  asset: string;
+  issuer: string | null;
+  balance: string;
+  /** Value of this balance in USDC, or null if no route to USDC exists. */
+  valueUsdc: string | null;
+}
+export interface Portfolio {
+  address: string;
+  holdings: Holding[];
+  /** Sum of the priced holdings, in USDC. */
+  totalUsdc: string;
+}
+
+/**
+ * Value every balance in an account in USDC. USDC is counted directly; every
+ * other asset is priced by quoting its full balance to USDC across the DEX
+ * (so the value already reflects realisable liquidity). Assets with no route to
+ * USDC are returned with `valueUsdc: null` and excluded from the total.
+ */
+export async function getPortfolio(address: string): Promise<Portfolio> {
+  const balances = await getBalances(address);
+  const [usdcCode, usdcIssuer] = USDC_ASSET.split(":");
+  let total = 0;
+  const holdings: Holding[] = [];
+  for (const b of balances) {
+    let valueUsdc: string | null;
+    if (b.asset === usdcCode && b.issuer === usdcIssuer) {
+      valueUsdc = b.balance;
+    } else if (Number(b.balance) === 0) {
+      valueUsdc = "0";
+    } else {
+      const spec = b.issuer ? `${b.asset}:${b.issuer}` : "native";
+      try {
+        valueUsdc = (await getQuote(spec, USDC_ASSET, b.balance)).destAmount;
+      } catch {
+        valueUsdc = null;
+      }
+    }
+    if (valueUsdc !== null) total += Number(valueUsdc);
+    holdings.push({ asset: b.asset, issuer: b.issuer, balance: b.balance, valueUsdc });
+  }
+  return { address, holdings, totalUsdc: total.toFixed(7) };
+}
+
+interface HorizonPath {
+  source_amount: string;
+  destination_amount: string;
+  path?: { asset_type: string; asset_code?: string; asset_issuer?: string }[];
+}
+interface HorizonOp {
+  type: string;
+  source_account: string;
+  from?: string;
+  to?: string;
+  amount?: string;
+  asset_type?: string;
+  asset_code?: string;
+  asset_issuer?: string;
+  funder?: string;
+  account?: string;
+  starting_balance?: string;
+  source_amount?: string;
+  source_asset_type?: string;
+  source_asset_code?: string;
+  trustor?: string;
+}
+
 interface HorizonBalance {
   balance: string;
   asset_type: string;
