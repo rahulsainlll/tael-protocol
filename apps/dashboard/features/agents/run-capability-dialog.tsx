@@ -217,7 +217,7 @@ export function RunCapabilityDialog({
                     value={requestInput}
                     onChange={(e) => setRequestInput(e.target.value)}
                     rows={isGet ? 2 : 3}
-                    placeholder={isGet ? "address=G…" : '{ "key": "value" }'}
+                    placeholder={isGet ? sample || "address=G…" : sample || '{ "key": "value" }'}
                     className="w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs"
                   />
                 </label>

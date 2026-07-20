@@ -32,7 +32,7 @@ const CAPABILITIES: PublishCapabilityInput[] = [
         path: "/stellar/balance",
         method: "GET",
         price: "0",
-        sampleRequest: "address=GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA",
+        sampleRequest: "address=<stellar-account-address>",
         sampleResponse: `{ "address": "G…", "balances": [{ "asset": "XLM", "issuer": null, "balance": "100.5" }] }`,
       },
       {
@@ -40,7 +40,7 @@ const CAPABILITIES: PublishCapabilityInput[] = [
         path: "/stellar/account",
         method: "GET",
         price: "0",
-        sampleRequest: "address=GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA",
+        sampleRequest: "address=<stellar-account-address>",
         sampleResponse: `{ "id": "G…", "sequence": "123", "homeDomain": null, "numTrustlines": 2 }`,
       },
       {
