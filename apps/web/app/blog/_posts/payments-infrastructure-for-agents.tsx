@@ -35,6 +35,11 @@ export function PaymentsInfrastructureForAgents() {
           customer at a time.
         </li>
         <li>
+          <Strong>Integration, on their side.</Strong> You publish once. After that, anyone can wire
+          your product into theirs in a few lines: they point the Tael SDK at your capability, and
+          their agent pays for it and calls it. Every integration is theirs to write, not yours.
+        </li>
+        <li>
           <Strong>Migration.</Strong> None. Your endpoint stays exactly where it is. Tael sits in
           front of it as a metered gateway. There is nothing to rebuild.
         </li>
