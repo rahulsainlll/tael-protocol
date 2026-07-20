@@ -251,4 +251,3 @@ interface HorizonAssetRecord {
     auth_clawback_enabled?: boolean;
   };
 }
-
