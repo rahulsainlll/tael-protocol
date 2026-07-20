@@ -184,8 +184,11 @@ export async function getTrades(
     order: "desc",
     limit: String(limit),
   });
-  const { ok, data } = await horizon(`/trades?${params}`);
-  if (!ok) throw new Error("horizon unavailable");
+  const { ok, status, data } = await horizon(`/trades?${params}`);
+  // Horizon returns 404 for a pair that simply has no trades (unlike the
+  // orderbook, which returns 200 with empty arrays). Treat that as an empty
+  // result, not an error — a valid pair with no market is a normal answer.
+  if (!ok && status !== 404) throw new Error("horizon unavailable");
 
   const records =
     (data as { _embedded?: { records?: HorizonTradeRecord[] } })?._embedded?.records ?? [];
