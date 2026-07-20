@@ -86,14 +86,18 @@ Adding an operation to an existing capability, e.g. `/stellar/asset` under
 Stellar. Copy an operation file as your template:
 
 1. `cp src/capabilities/stellar/operations/status.ts src/capabilities/stellar/operations/asset.ts`
-2. Edit `asset.ts` — set `name`, `path`, `price: "0"`, `sampleRequest`,
+2. Edit `asset.ts` — set a **single-word `name`** (it becomes the op slug, e.g.
+   `Asset` → `/c/stellar/asset`), `path`, `price: "0"`, `sampleRequest`,
    `sampleResponse`, and the `handler`. Put any fetch logic in the capability's
    helper (`stellar/horizon.ts`).
-3. That's it. The registry picks the file up automatically, nothing else to edit.
-   Run `pnpm --filter capabilities typecheck` and `pnpm --filter capabilities dev`,
+3. **Add a word to the capability's `description`** in `capability.ts` so the new
+   operation is discoverable — search matches on name + description, so an op the
+   description never mentions is callable but not findable.
+4. The registry picks the file up automatically, nothing else to edit. Run
+   `pnpm --filter capabilities typecheck` and `pnpm --filter capabilities dev`,
    then `curl "localhost:3004/stellar/asset?code=USDC&issuer=G…"`.
-4. Open a PR (`Closes #<issue>`). Because it's a new file, it can't conflict with
-   anyone else's operation.
+5. Open a PR (`Closes #<issue>`). Because it's a new file (plus one line in
+   `capability.ts`), it can't conflict with anyone else's operation.
 
 ## How to add a new capability
 

@@ -11,8 +11,7 @@ export function isStellarAddress(value: string): boolean {
 }
 
 async function horizon(path: string): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const baseUrl = process.env.STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
-  const res = await fetch(`${baseUrl}${path}`, {
+  const res = await fetch(`${HORIZON_URL}${path}`, {
     headers: { accept: "application/json" },
   });
   const data = await res.json().catch(() => null);
