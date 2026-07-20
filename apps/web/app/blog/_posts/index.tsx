@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AgentsCantPay } from "./agents-cant-pay";
+import { PaymentsInfrastructureForAgents } from "./payments-infrastructure-for-agents";
 
 export interface Post {
   slug: string;
@@ -13,6 +14,15 @@ export interface Post {
 }
 
 export const posts: Post[] = [
+  {
+    slug: "payments-infrastructure-for-ai-agents",
+    title: "Payments infrastructure for AI agents",
+    description:
+      "Tael lets any API, model, or service charge autonomous agents per call in USDC. No billing system, no accounts, no sales, no integration beyond one line of code.",
+    date: "2026-07-20",
+    readingTime: "3 min read",
+    body: PaymentsInfrastructureForAgents,
+  },
   {
     slug: "agents-can-think-they-cant-pay",
     title: "Agents can think. They can't pay.",

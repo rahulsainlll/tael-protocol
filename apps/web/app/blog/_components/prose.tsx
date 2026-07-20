@@ -83,6 +83,15 @@ export function Code({ children }: { children: ReactNode }) {
   );
 }
 
+/** A monospace block for a code sample — dark, framed, softly scrollable. */
+export function CodeBlock({ children }: { children: string }) {
+  return (
+    <pre className="my-8 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-[13.5px] leading-[1.75] text-white/75 sm:text-[14px]">
+      <code className="font-mono">{children}</code>
+    </pre>
+  );
+}
+
 /** A subtle bordered aside for a note or definition. */
 export function Note({ children }: { children: ReactNode }) {
   return (
