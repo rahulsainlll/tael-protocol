@@ -8,12 +8,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "gen": "node scripts/gen-registry.mjs",
+    "dev": "node scripts/gen-registry.mjs && tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsup",
-    "typecheck": "tsc --noEmit",
+    "build": "node scripts/gen-registry.mjs && tsup",
+    "typecheck": "node scripts/gen-registry.mjs && tsc --noEmit",
     "clean": "rm -rf dist .turbo",
-    "publish:capabilities": "tsx src/publish.ts"
+    "publish:capabilities": "node scripts/gen-registry.mjs && tsx src/publish.ts"
   },
   "dependencies": {
     "@hono/node-server": "catalog:",

@@ -39,3 +39,6 @@ pnpm-debug.log*
 # Local agent-skill artifacts (installed per-machine, not part of the repo)
 /.agents/
 /skills-lock.json
+
+# Generated capability registry (regenerated on every build)
+*.generated.ts
