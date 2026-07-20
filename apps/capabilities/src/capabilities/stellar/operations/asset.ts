@@ -3,7 +3,7 @@ import { getAssetInfo, isStellarAddress } from "../horizon";
 
 /** GET /stellar/asset?code=USDC&issuer=G... — supply, holders count, and flags for an issued asset. */
 export const operation: Operation = {
-  name: "Asset Info",
+  name: "Asset",
   path: "/stellar/asset",
   method: "GET",
   price: "0",
