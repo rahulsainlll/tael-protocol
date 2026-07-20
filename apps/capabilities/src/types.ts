@@ -1,23 +1,29 @@
-import type { Hono } from "hono";
-import type { PublishCapabilityInput } from "@tael/sdk";
+import type { Context, Hono } from "hono";
+import type { PublishCapabilityInput, PublishOperation } from "@tael/sdk";
 
 /**
- * One first-party capability, as a self-contained module. Every folder under
- * `src/capabilities/<name>/` exports a `capability` of this shape, and the
- * generated registry (`registry.generated.ts`) collects them all. `server.ts`
- * mounts each `routes` and `publish.ts` upserts each `manifest`, so neither file
- * grows as capabilities are added: you only ever add a folder.
+ * Capability-level metadata: everything about a capability except its operations
+ * and the publish-time fields. Lives in `capabilities/<name>/capability.ts`.
+ */
+export type CapabilityMeta = Omit<PublishCapabilityInput, "endpoint" | "payTo" | "operations">;
+
+/**
+ * One operation of a capability: its marketplace manifest fields (name, path,
+ * price, samples) plus the Hono handler that serves its `path`. Lives in its own
+ * file under `capabilities/<name>/operations/`, so adding an operation is a new
+ * file and nothing else, no shared file to edit, no conflicts between PRs.
+ */
+export interface Operation extends PublishOperation {
+  handler: (c: Context) => Response | Promise<Response>;
+}
+
+/**
+ * A fully assembled capability: Hono routes (all its operations mounted) plus the
+ * publish manifest. Built by `assemble()` from a capability's meta + operations,
+ * and collected into the generated registry. `endpoint` and `payTo` are the same
+ * for every first-party capability, so they're injected at publish time.
  */
 export interface CapabilityModule {
-  /**
-   * Hono routes for this capability, mounted at the app root. Paths are absolute
-   * (e.g. `/stellar/balance`) so they match the operation paths in the manifest.
-   */
   routes: Hono;
-  /**
-   * The marketplace publish manifest. `endpoint` and `payTo` are the same for
-   * every first-party capability (this one service, Tael's wallet), so they are
-   * injected at publish time from the environment and omitted here.
-   */
   manifest: Omit<PublishCapabilityInput, "endpoint" | "payTo">;
 }

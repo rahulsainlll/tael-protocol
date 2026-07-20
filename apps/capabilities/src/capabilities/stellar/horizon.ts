@@ -1,6 +1,7 @@
-// Thin, dependency-free reads against Stellar Horizon. Every capability here is
+// Thin, dependency-free reads against Stellar Horizon. Every Stellar operation is
 // read-only and public, so a plain fetch is all we need. The network's Horizon
-// URL comes from the environment, defaulting to testnet.
+// URL comes from the environment, defaulting to testnet. Each operation file
+// under ./operations/ uses one of these helpers.
 
 const HORIZON_URL = process.env.STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
 
@@ -69,6 +70,78 @@ export async function getTransaction(hash: string): Promise<unknown> {
   };
 }
 
+export interface NetworkStatus {
+  latestLedger: number;
+  protocolVersion: number;
+  baseFee: string;
+  baseReserve: string;
+  closedAt: string;
+  hash: string;
+}
+
+/** Latest ledger + the network parameters an agent needs before it transacts. */
+export async function getStatus(): Promise<NetworkStatus> {
+  const { ok, data } = await horizon(`/ledgers?order=desc&limit=1`);
+  if (!ok) throw new Error("horizon unavailable");
+  const ledger = (data as { _embedded?: { records?: HorizonLedger[] } })._embedded?.records?.[0];
+  if (!ledger) throw new Error("no ledger");
+  return {
+    latestLedger: ledger.sequence,
+    protocolVersion: ledger.protocol_version,
+    baseFee: String(ledger.base_fee_in_stroops),
+    baseReserve: String(ledger.base_reserve_in_stroops),
+    closedAt: ledger.closed_at,
+    hash: ledger.hash,
+  };
+}
+
+export interface Order {
+  price: string;
+  amount: string;
+}
+export interface Orderbook {
+  selling: string;
+  buying: string;
+  bids: Order[];
+  asks: Order[];
+}
+
+/** Turn `native` or `CODE:ISSUER` into Horizon's asset query params for a side. */
+function assetParams(prefix: "selling" | "buying", spec: string): Record<string, string> {
+  if (spec === "native" || spec === "XLM") return { [`${prefix}_asset_type`]: "native" };
+  const [code, issuer] = spec.split(":");
+  if (!code || !issuer) throw new Error("bad asset");
+  const type = code.length <= 4 ? "credit_alphanum4" : "credit_alphanum12";
+  return {
+    [`${prefix}_asset_type`]: type,
+    [`${prefix}_asset_code`]: code,
+    [`${prefix}_asset_issuer`]: issuer,
+  };
+}
+
+/** Top `limit` bids and asks for a pair. Throws "bad asset" on a malformed spec. */
+export async function getOrderbook(
+  selling: string,
+  buying: string,
+  limit: number,
+): Promise<Orderbook> {
+  const params = new URLSearchParams({
+    ...assetParams("selling", selling),
+    ...assetParams("buying", buying),
+    limit: String(limit),
+  });
+  const { ok, data } = await horizon(`/order_book?${params}`);
+  if (!ok) throw new Error("horizon unavailable");
+  const book = data as { bids?: Order[]; asks?: Order[] };
+  const trim = (o: Order): Order => ({ price: o.price, amount: o.amount });
+  return {
+    selling,
+    buying,
+    bids: (book.bids ?? []).map(trim),
+    asks: (book.asks ?? []).map(trim),
+  };
+}
+
 interface HorizonBalance {
   balance: string;
   asset_type: string;
@@ -94,4 +167,12 @@ interface HorizonTx {
   fee_charged: string;
   operation_count: number;
   memo?: string;
+}
+interface HorizonLedger {
+  sequence: number;
+  hash: string;
+  closed_at: string;
+  protocol_version: number;
+  base_fee_in_stroops: number;
+  base_reserve_in_stroops: number;
 }
