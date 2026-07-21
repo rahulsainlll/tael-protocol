@@ -9,3 +9,4 @@ export * from "./payments";
 export * from "./api-keys";
 export * from "./reviews";
 export * from "./relations";
+export * from "./chat";

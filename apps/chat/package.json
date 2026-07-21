@@ -19,13 +19,16 @@
     "@creit.tech/stellar-wallets-kit": "catalog:",
     "@stellar/stellar-sdk": "catalog:",
     "@tael/auth": "workspace:*",
+    "@tael/claude": "workspace:*",
+    "@tael/database": "workspace:*",
     "@tael/stellar": "workspace:*",
     "@tael/ui": "workspace:*",
     "lucide-react": "catalog:",
     "next": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tael/config": "workspace:*",
@@ -36,6 +39,7 @@
     "dotenv": "^16.4.7",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
