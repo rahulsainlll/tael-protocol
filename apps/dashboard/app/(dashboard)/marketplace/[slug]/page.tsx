@@ -71,7 +71,6 @@ export default async function CapabilityDetailPage({
           iconClassName="h-6 w-6"
         />
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm text-muted-foreground">Capability</p>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             {capability.name}
             {verified ? (
