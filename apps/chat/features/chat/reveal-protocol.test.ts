@@ -9,7 +9,11 @@ describe("extractReveals", () => {
   });
 
   it("strips a complete reveal block out of the visible text and returns its payload", () => {
-    const payload = { type: "api_key" as const, value: "tael_live_abc123", cardName: "Research" };
+    const payload = {
+      type: "api_key" as const,
+      value: "tael_live_abc123",
+      cardName: "Research",
+    };
     const buffer = `Here's your key.${encodeReveal(payload)}All set.`;
 
     const { visible, reveals } = extractReveals(buffer);
@@ -19,7 +23,10 @@ describe("extractReveals", () => {
   });
 
   it("handles a marker that hasn't fully arrived yet — no partial junk shown, nothing returned", () => {
-    const payload = { type: "api_key" as const, value: "tael_live_abc123" };
+    const payload = {
+      type: "api_key" as const,
+      value: "tael_live_abc123",
+    };
     const full = encodeReveal(payload);
     const partial = `Here's your key.${full.slice(0, full.length - 5)}`; // END marker cut off
 
@@ -30,17 +37,25 @@ describe("extractReveals", () => {
   });
 
   it("recovers once the rest of a previously-partial marker arrives (simulates the next chunk)", () => {
-    const payload = { type: "api_key" as const, value: "tael_live_abc123" };
-    const full = `Here's your key.${encodeReveal(payload)}All set.`;
-    // First call sees only the first half of the stream so far.
-    const firstHalf = full.slice(0, full.length - 8);
+    const payload = {
+      type: "api_key" as const,
+      value: "tael_live_abc123",
+    };
+    const marker = encodeReveal(payload);
+    const prefix = "Here's your key.";
+    const suffix = "All set.";
+    const full = `${prefix}${marker}${suffix}`;
+
+    // Cut into the marker itself (not the trailing "All set." text) so this
+    // actually simulates a marker that hasn't fully streamed in yet.
+    const firstHalf = `${prefix}${marker.slice(0, marker.length - 8)}`;
     const { reveals: firstPass } = extractReveals(firstHalf);
     expect(firstPass).toEqual([]);
 
     // Second call sees the full buffer (chunks accumulate; extractReveals is
     // always called against the whole buffer, never just the new chunk).
     const { visible, reveals } = extractReveals(full);
-    expect(visible).toBe("Here's your key.All set.");
+    expect(visible).toBe(`${prefix}${suffix}`);
     expect(reveals).toEqual([payload]);
   });
 
@@ -56,7 +71,8 @@ describe("extractReveals", () => {
   });
 
   it("drops a malformed payload instead of throwing", () => {
-    const buffer = "before\u0000TAEL_REVEAL_START\u0000{not json}\u0000TAEL_REVEAL_END\u0000after";
+    const buffer =
+      "before\u0000TAEL_REVEAL_START\u0000{not json}\u0000TAEL_REVEAL_END\u0000after";
 
     const { visible, reveals } = extractReveals(buffer);
 
