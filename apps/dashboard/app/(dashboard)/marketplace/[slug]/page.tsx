@@ -62,7 +62,7 @@ export default async function CapabilityDetailPage({
       </Link>
 
       {/* Header */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-4">
         <CapabilityLogo
           src={capability.logoUrl}
           name={capability.name}
