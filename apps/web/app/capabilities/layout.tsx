@@ -1,26 +1,26 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-const BLOG_DESCRIPTION =
-  "Notes on machine-native payments, and how AI agents pay for APIs, tools, and data with x402 and USDC on Stellar.";
+const DESCRIPTION =
+  "The live directory of Tael capabilities: APIs, tools, and data that any AI agent can discover and pay for per call in USDC — plus the capabilities we'd love the community to build.";
 
 export const metadata: Metadata = {
-  title: "Blog",
-  description: BLOG_DESCRIPTION,
-  alternates: { canonical: "/blog" },
+  title: "Capabilities",
+  description: DESCRIPTION,
+  alternates: { canonical: "/capabilities" },
   openGraph: {
     type: "website",
-    url: "https://taelprotocol.xyz/blog",
+    url: "https://taelprotocol.xyz/capabilities",
     siteName: "Tael",
-    title: "Tael Blog",
-    description: BLOG_DESCRIPTION,
+    title: "Tael Capabilities",
+    description: DESCRIPTION,
   },
 };
 
-export default function BlogLayout({ children }: { children: ReactNode }) {
+export default function CapabilitiesLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0e0e11] text-white">
-      {/* Top nav */}
+      {/* Top nav — mirrors the blog layout, with Capabilities active. */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0e0e11]/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
           <a href="/" className="flex items-center gap-1">
@@ -28,10 +28,10 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
             <span className="text-[20px] font-medium tracking-[0.01em] text-white">tael</span>
           </a>
           <nav className="flex items-center gap-6 text-[14px] font-medium">
-            <a href="/capabilities" className="text-white/55 transition-colors hover:text-white">
+            <a href="/capabilities" className="text-white transition-colors">
               Capabilities
             </a>
-            <a href="/blog" className="text-white transition-colors">
+            <a href="/blog" className="text-white/55 transition-colors hover:text-white">
               Blog
             </a>
             <a href="/docs" className="text-white/55 transition-colors hover:text-white">
