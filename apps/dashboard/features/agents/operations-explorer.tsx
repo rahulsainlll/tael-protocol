@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Check, ChevronRight, CreditCard, Play, Sparkles, TriangleAlert } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CreditCard,
+  Play,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
 import {
   Button,
   cn,
@@ -90,46 +98,58 @@ function CardPicker({
   selected: AgentOption | null;
   onSelect: (id: string) => void;
 }) {
+  // No card yet — make the requirement (and the fix) explicit, not a dead chip.
   if (agents.length === 0) {
     return (
-      <a href="/agents" className="text-sm font-medium text-foreground hover:underline">
-        Add a card to run
+      <a
+        href="/agents"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10"
+      >
+        <CreditCard className="h-3.5 w-3.5" /> Add a card to run
       </a>
     );
   }
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="transition-transform duration-100 ease-out active:scale-[0.98]"
-        >
-          <CreditCard className="h-3.5 w-3.5" />
-          <span className="max-w-[10rem] truncate">{selected?.name ?? "Select a card"}</span>
-          {selected ? (
-            <span className="tabular-nums text-muted-foreground">${formatUsdc(selected.usdc)}</span>
-          ) : null}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel>Run with card</DropdownMenuLabel>
-        {agents.map((a) => (
-          <DropdownMenuItem
-            key={a.agentId}
-            onSelect={() => onSelect(a.agentId)}
-            className="flex items-center gap-2"
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        Card
+      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 transition-transform duration-100 ease-out active:scale-[0.98]"
           >
-            <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate">{a.name}</span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">
-              ${formatUsdc(a.usdc)}
-            </span>
-            {a.agentId === selected?.agentId ? <Check className="h-4 w-4 shrink-0" /> : null}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <CreditCard className="h-3.5 w-3.5" />
+            <span className="max-w-[9rem] truncate">{selected?.name ?? "Select a card"}</span>
+            {selected ? (
+              <span className="tabular-nums text-muted-foreground">
+                ${formatUsdc(selected.usdc)}
+              </span>
+            ) : null}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel>Run with card</DropdownMenuLabel>
+          {agents.map((a) => (
+            <DropdownMenuItem
+              key={a.agentId}
+              onSelect={() => onSelect(a.agentId)}
+              className="flex items-center gap-2"
+            >
+              <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate">{a.name}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                ${formatUsdc(a.usdc)}
+              </span>
+              {a.agentId === selected?.agentId ? <Check className="h-4 w-4 shrink-0" /> : null}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -250,15 +270,15 @@ function OperationRow({
             }
           }}
           className={cn(
-            "inline-flex w-16 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-all duration-100 ease-out hover:bg-muted active:scale-[0.96]",
-            pending && "pointer-events-none opacity-60",
+            "inline-flex w-[4.5rem] items-center justify-center gap-1 rounded-md bg-foreground px-2 py-1.5 text-xs font-medium text-background shadow-sm transition-all duration-100 ease-out hover:bg-foreground/90 active:scale-[0.96]",
+            pending && "pointer-events-none opacity-70",
           )}
         >
           {pending ? (
-            <span className="h-3 w-3 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-foreground" />
+            <span className="h-3 w-3 animate-spin rounded-full border-2 border-background/40 border-t-background" />
           ) : (
             <>
-              <Play className="h-3 w-3" /> Run
+              <Play className="h-3 w-3" /> {paid ? "Pay" : "Run"}
             </>
           )}
         </span>
@@ -282,37 +302,20 @@ function OperationRow({
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs outline-none transition-shadow focus:ring-2 focus:ring-ring/30"
               />
             </label>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">
-                {paid ? (
-                  <>
-                    Costs{" "}
-                    <span className="font-medium tabular-nums text-foreground">
-                      ${op.price} USDC
-                    </span>
-                  </>
-                ) : (
-                  "Free to run"
-                )}
-              </span>
-              <Button
-                size="sm"
-                onClick={run}
-                disabled={pending || !agent || !canPay}
-                className="transition-transform duration-100 ease-out active:scale-[0.97]"
-              >
-                {pending ? (
-                  <>
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-background/40 border-t-background" />
-                    {paid ? "Paying…" : "Running…"}
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-3.5 w-3.5" /> {paid ? "Pay & run" : "Run"}
-                  </>
-                )}
-              </Button>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              {paid ? (
+                <>
+                  Costs{" "}
+                  <span className="font-medium tabular-nums text-foreground">${op.price} USDC</span>
+                  {" · use "}
+                  <span className="font-medium text-foreground">Pay</span> above to run.
+                </>
+              ) : (
+                <>
+                  Free to run · use <span className="font-medium text-foreground">Run</span> above.
+                </>
+              )}
+            </p>
             {agent && !canPay ? (
               <p className="flex items-start gap-1.5 text-xs text-amber-600">
                 <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
