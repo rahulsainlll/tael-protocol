@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, ChevronDown, Code2, Pencil } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronDown, Pencil } from "lucide-react";
 import { cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
 import { isCurrentUserAdmin } from "../../../../features/capabilities/actions";
@@ -9,6 +9,7 @@ import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilitie
 import { UseCapabilityDialog } from "../../../../features/capabilities/use-capability-dialog";
 import { VerifyToggle } from "../../../../features/capabilities/verify-toggle";
 import { RunCapabilityDialog } from "../../../../features/agents/run-capability-dialog";
+import { OperationsExplorer } from "../../../../features/agents/operations-explorer";
 import { listAgentsForRun } from "../../../../features/agents/queries";
 import { ReviewsSection } from "../../../../features/reviews/reviews-section";
 import { VerificationTimeline } from "../../../../features/capabilities/verification-timeline";
@@ -179,59 +180,21 @@ export default async function CapabilityDetailPage({
         </section>
       ) : null}
 
-      {/* Requests — each operation with its price + sample request/response */}
+      {/* Operations — expandable table: edit params, run inline, see the result. */}
       {operations.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="flex items-center gap-1.5 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            <Code2 className="h-4 w-4" /> Requests
-          </h2>
-          <div className="space-y-4">
-            {operations.map((op, i) => (
-              <div key={i} className="space-y-3 rounded-xl border p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {op.method ? (
-                    <span className="rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 font-mono text-xs font-semibold text-blue-600">
-                      {op.method}
-                    </span>
-                  ) : null}
-                  <span className="font-medium">{op.name || `Request ${i + 1}`}</span>
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-                    /{capability.slug}/{op.slug || opSlug(op.name, i)}
-                  </code>
-                  <span className="ml-auto text-sm font-semibold tabular-nums">
-                    {Number(op.price) > 0 ? (
-                      <>
-                        ${formatPrice(op.price)}
-                        <span className="text-xs font-normal text-muted-foreground">USDC/call</span>
-                      </>
-                    ) : (
-                      <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                        Free
-                      </span>
-                    )}
-                  </span>
-                  <RunCapabilityDialog
-                    slug={capability.slug}
-                    price={formatPrice(op.price)}
-                    agents={agentOptions}
-                    operation={runOp(op, i)}
-                    trigger="compact"
-                  />
-                </div>
-                {op.sampleRequest || op.sampleResponse ? (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {op.sampleRequest ? (
-                      <CodeBlock title="Sample request" code={op.sampleRequest} />
-                    ) : null}
-                    {op.sampleResponse ? (
-                      <CodeBlock title="Sample response" code={op.sampleResponse} />
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </section>
+        <OperationsExplorer
+          slug={capability.slug}
+          agents={agentOptions}
+          operations={operations.map((op, i) => ({
+            name: op.name || `Request ${i + 1}`,
+            opSlug: op.slug || opSlug(op.name, i),
+            method: op.method || "GET",
+            price: formatPrice(op.price),
+            priceRaw: op.price ?? "0",
+            sampleRequest: op.sampleRequest ?? "",
+            sampleResponse: op.sampleResponse ?? "",
+          }))}
+        />
       ) : null}
 
       {/* FAQ — visible to buyers, collapsed by default */}
@@ -256,19 +219,6 @@ export default async function CapabilityDetailPage({
 
       {/* Reviews */}
       <ReviewsSection capabilityId={capability.id} slug={capability.slug} />
-    </div>
-  );
-}
-
-function CodeBlock({ title, code }: { title: string; code: string }) {
-  return (
-    <div className="overflow-hidden rounded-xl border">
-      <div className="border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
-        {title}
-      </div>
-      <pre className="overflow-x-auto p-3 text-xs leading-relaxed">
-        <code>{code}</code>
-      </pre>
     </div>
   );
 }
