@@ -11,7 +11,7 @@ import {
   wallets,
 } from "@tael/database";
 import { Money } from "@tael/types";
-import { buildSignedPayment, TAEL_MEMO } from "@tael/stellar";
+import { buildSignedPayment, createStellarSettlement, TAEL_MEMO } from "@tael/stellar";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "../capabilities/current-user";
 import { fetchUsdcBalance } from "./balance";
@@ -23,6 +23,11 @@ const STELLAR_NETWORK = process.env.STELLAR_NETWORK === "mainnet" ? "mainnet" : 
 // balance check below then behaves exactly as it did before this change.
 const TRUSTLINE_API = process.env.TRUSTLINE_API;
 const HORIZON_URL = process.env.STELLAR_HORIZON_URL ?? "https://horizon-testnet.stellar.org";
+// Action settlement config (the Pay action and future on-chain actions).
+const USDC_ISSUER =
+  process.env.USDC_ISSUER ?? "GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA";
+const FEE_ADDRESS = process.env.TAEL_FEE_ADDRESS ?? "";
+const ACTION_FEE = process.env.TAEL_ACTION_FEE ?? "0.001";
 
 interface Requirement {
   network: string;
@@ -151,6 +156,11 @@ export async function runCapability(input: {
       if (!direct.ok) {
         return { ok: false, status: direct.status, body, error: friendlyError(direct.status) };
       }
+      // Action ops return a `tael_action` intent to SIGN, not data. If we get
+      // one, the agent's card signs it and submits it on-chain (with Tael's fee
+      // baked into the same transaction), after enforcing the spending policy.
+      const intent = parsePayIntent(body);
+      if (intent) return runPayAction(intent, agent.address, agent.policy, secretEnc);
       return { ok: true, status: direct.status, body, paid: "0" };
     }
     const body = (await res.json()) as { accepts: Requirement[] };
@@ -261,4 +271,99 @@ function friendlyError(status: number): string {
   if (status === 404) return "This capability is no longer available.";
   if (status >= 500) return "The agent couldn't pay, or the upstream API is down. Try again.";
   return `The call failed (${status}).`;
+}
+
+/** The validated Pay intent an action capability returns to be signed. */
+interface PayIntent {
+  to: string;
+  amount: string;
+  memo?: string;
+}
+
+/** Parse a capability response into a Pay intent, or null if it isn't an action. */
+function parsePayIntent(body: string): PayIntent | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const p = parsed as Record<string, unknown>;
+  if (p.tael_action !== "pay") return null;
+  if (typeof p.to !== "string" || typeof p.amount !== "string") return null;
+  return { to: p.to, amount: p.amount, memo: typeof p.memo === "string" ? p.memo : undefined };
+}
+
+/**
+ * Execute a Pay action: enforce the spending policy, build ONE USDC transaction
+ * (the payment + Tael's fee), sign it with the agent's card, and submit it. The
+ * action and the fee settle atomically — the fee is another leg in the same tx.
+ */
+async function runPayAction(
+  intent: PayIntent,
+  address: string,
+  policy: { maxPerCall: string; dailyLimit: string } | null,
+  secretEnc: string,
+): Promise<RunResult> {
+  const amount = Money.parse(intent.amount);
+  const fee = FEE_ADDRESS ? Money.parse(ACTION_FEE) : Money.parse("0");
+  const total = amount.add(fee);
+
+  // Enforce the spending policy BEFORE signing — same gates as a paid call.
+  if (policy) {
+    if (total.isGreaterThan(Money.parse(policy.maxPerCall))) {
+      return {
+        ok: false,
+        error: `Over the per-call cap ($${total.toDecimalString()} > $${policy.maxPerCall}).`,
+      };
+    }
+    const projected = (await spentLast24h(address)).add(total);
+    if (projected.isGreaterThan(Money.parse(policy.dailyLimit))) {
+      return { ok: false, error: `Would exceed the daily limit of $${policy.dailyLimit}.` };
+    }
+  }
+
+  // Must actually hold enough USDC to cover the payment + fee.
+  const { usdc } = await fetchUsdcBalance(address);
+  if (total.isGreaterThan(Money.parse(usdc))) {
+    return {
+      ok: false,
+      error: `Not enough USDC. This card has $${usdc}, the payment needs $${total.toDecimalString()}. Fund it first.`,
+    };
+  }
+
+  try {
+    const legs = [{ to: intent.to, amount: intent.amount }];
+    if (FEE_ADDRESS) legs.push({ to: FEE_ADDRESS, amount: ACTION_FEE });
+    const xdr = await buildSignedPayment({
+      secret: decryptSecret(secretEnc),
+      network: STELLAR_NETWORK,
+      horizonUrl: HORIZON_URL,
+      usdcIssuer: USDC_ISSUER,
+      legs,
+      memo: TAEL_MEMO,
+    });
+    const receipt = await createStellarSettlement({
+      network: STELLAR_NETWORK,
+      horizonUrl: HORIZON_URL,
+      usdcIssuer: USDC_ISSUER,
+    }).submitSignedTransaction(xdr);
+    const result = {
+      action: "pay",
+      to: intent.to,
+      amount: intent.amount,
+      fee: FEE_ADDRESS ? ACTION_FEE : "0",
+      asset: "USDC",
+      txHash: receipt.txHash,
+    };
+    return { ok: true, status: 200, body: JSON.stringify(result), paid: total.toDecimalString() };
+  } catch (error) {
+    console.error("[run] pay action failed:", error);
+    return {
+      ok: false,
+      error:
+        "The payment couldn't be submitted. Check the card is funded and the destination trusts USDC.",
+    };
+  }
 }

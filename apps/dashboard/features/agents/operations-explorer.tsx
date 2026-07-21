@@ -35,6 +35,9 @@ export interface ExplorerOperation {
   priceRaw: string;
   sampleRequest: string;
   sampleResponse: string;
+  /** An on-chain action (signs + sends from the card) rather than a data read.
+   *  The call itself is free, but it moves funds — so it must not read "Free". */
+  isAction?: boolean;
 }
 
 /**
@@ -172,6 +175,7 @@ function OperationRow({
   const isGet = method === "GET" || method === "HEAD";
   const priceNum = Number(op.priceRaw);
   const paid = priceNum > 0;
+  const action = op.isAction ?? false;
 
   const [input, setInput] = useState(op.sampleRequest);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -241,7 +245,11 @@ function OperationRow({
         </span>
 
         <span className="text-right text-sm tabular-nums">
-          {paid ? (
+          {action ? (
+            <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600">
+              Action
+            </span>
+          ) : paid ? (
             <>
               <span className="font-semibold">${op.price}</span>
               <span className="text-xs font-normal text-muted-foreground"> USDC</span>
@@ -278,7 +286,7 @@ function OperationRow({
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-background/40 border-t-background" />
           ) : (
             <>
-              <Play className="h-3 w-3" /> {paid ? "Pay" : "Run"}
+              <Play className="h-3 w-3" /> {action ? "Send" : paid ? "Pay" : "Run"}
             </>
           )}
         </span>
@@ -303,7 +311,12 @@ function OperationRow({
               />
             </label>
             <p className="text-xs text-muted-foreground">
-              {paid ? (
+              {action ? (
+                <>
+                  Moves funds from your card. It signs and sends on-chain — use{" "}
+                  <span className="font-medium text-foreground">Send</span> above.
+                </>
+              ) : paid ? (
                 <>
                   Costs{" "}
                   <span className="font-medium tabular-nums text-foreground">${op.price} USDC</span>
