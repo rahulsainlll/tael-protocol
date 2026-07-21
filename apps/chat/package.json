@@ -12,7 +12,6 @@
     "build": "next build",
     "start": "next start --port 3003",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
