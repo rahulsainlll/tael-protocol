@@ -71,8 +71,7 @@ describe("extractReveals", () => {
   });
 
   it("drops a malformed payload instead of throwing", () => {
-    const buffer =
-      "before\u0000TAEL_REVEAL_START\u0000{not json}\u0000TAEL_REVEAL_END\u0000after";
+    const buffer = "before\u0000TAEL_REVEAL_START\u0000{not json}\u0000TAEL_REVEAL_END\u0000after";
 
     const { visible, reveals } = extractReveals(buffer);
 
