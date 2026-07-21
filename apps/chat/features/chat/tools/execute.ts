@@ -1,4 +1,3 @@
-import "server-only";
 import { getCapabilityBySlug, searchCapabilities } from "./capabilities";
 
 /** Threaded through every tool call. Grows as later PRs add tools that need it. */

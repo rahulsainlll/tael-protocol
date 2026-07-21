@@ -12,7 +12,8 @@
     "build": "next build",
     "start": "next start --port 3003",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next .turbo"
+    "clean": "rm -rf .next .turbo",
+    "test": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "catalog:",
