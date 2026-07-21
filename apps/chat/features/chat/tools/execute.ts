@@ -77,7 +77,10 @@ export async function executeTool(
       const keyName = String(input.name ?? "").trim();
       const cardId = input.cardId ? String(input.cardId) : null;
       if (!keyName) {
-        return { forModel: { error: "Missing name." }, summary: "Key creation skipped — no name given." };
+        return {
+          forModel: { error: "Missing name." },
+          summary: "Key creation skipped — no name given.",
+        };
       }
       const result = await createApiKey(ctx.userId, keyName, cardId);
       if (!result.ok || !result.key) {

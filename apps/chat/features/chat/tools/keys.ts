@@ -35,7 +35,7 @@ export const KEY_TOOLS: Anthropic.Tool[] = [
       properties: {
         name: {
           type: "string",
-          description: "A short label for the key, e.g. \"Chat agent\" or \"Research bot\".",
+          description: 'A short label for the key, e.g. "Chat agent" or "Research bot".',
         },
         cardId: {
           type: "string",
