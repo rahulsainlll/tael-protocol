@@ -3,6 +3,8 @@ import { SiteHeader } from "./_components/site-header";
 import { WaitlistForm } from "./_components/waitlist-form";
 import { ProviderCards } from "./_components/provider-cards";
 import { FooterLinks } from "./_components/footer-links";
+import { FeatureCards } from "./_components/feature-cards";
+import { FeaturedCapabilities } from "./_components/featured-capabilities";
 
 // Pixel-anchored: dark upper region matches the original design, then a long,
 // smooth grey→white fade (410→740px, ~330px) so it blends gently into white
@@ -103,6 +105,20 @@ export default function HomePage() {
           <div className="absolute left-1/2 top-[481px] w-[464px] max-w-[calc(100vw-48px)] -translate-x-1/2">
             <WaitlistForm className="w-full" />
           </div>
+        </div>
+      </section>
+
+      {/* Feature cards — Tael's four best things, each linking to a doc. */}
+      <section className="bg-white pb-10 pt-4">
+        <div className="mx-auto max-w-[1160px] px-6">
+          <FeatureCards />
+        </div>
+      </section>
+
+      {/* Featured capabilities — a spotlight of real, verified capabilities. */}
+      <section className="bg-white pb-12">
+        <div className="mx-auto max-w-[1160px] px-6">
+          <FeaturedCapabilities />
         </div>
       </section>
 
