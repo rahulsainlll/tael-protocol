@@ -259,6 +259,9 @@ importers:
       '@tael/stellar':
         specifier: workspace:*
         version: link:../../packages/stellar
+      '@tael/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@tael/ui':
         specifier: workspace:*
         version: link:../../packages/ui

@@ -5,7 +5,13 @@ vi.mock("./capabilities", () => ({
   getCapabilityBySlug: vi.fn(),
 }));
 
+vi.mock("../../keys/queries", () => ({
+  listCards: vi.fn(),
+  createApiKey: vi.fn(),
+}));
+
 import { searchCapabilities, getCapabilityBySlug } from "./capabilities";
+import { createApiKey, listCards } from "../../keys/queries";
 import { executeTool } from "./execute";
 
 const ctx = { userId: "user-1" };
@@ -78,5 +84,86 @@ describe("executeTool", () => {
 
     expect(result.forModel).toEqual({ error: 'Unknown tool "delete_everything".' });
     expect(result.summary).toContain("delete_everything");
+  });
+
+  it("list_cards reports how many Cards the user has", async () => {
+    vi.mocked(listCards).mockResolvedValueOnce([
+      { id: "card-1", name: "Personal", address: null, policy: null },
+    ]);
+
+    const result = await executeTool("list_cards", {}, ctx);
+
+    expect(listCards).toHaveBeenCalledWith(ctx.userId);
+    expect(result.summary).toBe("Checked your Cards — 1 available.");
+  });
+
+  it("list_cards distinguishes the empty case", async () => {
+    vi.mocked(listCards).mockResolvedValueOnce([]);
+
+    const result = await executeTool("list_cards", {}, ctx);
+
+    expect(result.summary).toBe("Checked your Cards — you don't have any yet.");
+  });
+
+  it("create_api_key redacts the raw key from forModel and delivers it only via `reveal`", async () => {
+    const card = {
+      id: "card-1",
+      name: "Research bot",
+      address: "GABC",
+      policy: { maxPerCall: "1.00", dailyLimit: "10.00", blockedPublishers: [] },
+    };
+    vi.mocked(createApiKey).mockResolvedValueOnce({
+      ok: true,
+      key: "tael_live_abc123",
+      prefix: "tael_live_ab12cd",
+      card,
+    });
+
+    const result = await executeTool(
+      "create_api_key",
+      { name: "Research bot key", cardId: "card-1" },
+      ctx,
+    );
+
+    expect(createApiKey).toHaveBeenCalledWith(ctx.userId, "Research bot key", "card-1");
+    // The model-facing payload must never contain the raw key.
+    expect(JSON.stringify(result.forModel)).not.toContain("tael_live_abc123");
+    expect(result.forModel).toEqual({ ok: true, prefix: "tael_live_ab12cd", card });
+    expect(result.summary).toBe('Created API key "Research bot key", linked to "Research bot".');
+    expect(result.reveal).toEqual({
+      type: "api_key",
+      value: "tael_live_abc123",
+      cardName: "Research bot",
+    });
+  });
+
+  it("create_api_key omits cardName from the reveal when unlinked", async () => {
+    vi.mocked(createApiKey).mockResolvedValueOnce({
+      ok: true,
+      key: "tael_live_xyz",
+      prefix: "tael_live_xy12zz",
+    });
+
+    const result = await executeTool("create_api_key", { name: "Unlinked key" }, ctx);
+
+    expect(createApiKey).toHaveBeenCalledWith(ctx.userId, "Unlinked key", null);
+    expect(result.summary).toBe('Created API key "Unlinked key".');
+    expect(result.reveal).toEqual({ type: "api_key", value: "tael_live_xyz", cardName: undefined });
+  });
+
+  it("create_api_key surfaces a failure without throwing, and without a reveal", async () => {
+    vi.mocked(createApiKey).mockResolvedValueOnce({ ok: false, error: "That Card was not found." });
+
+    const result = await executeTool("create_api_key", { name: "Bot", cardId: "nope" }, ctx);
+
+    expect(result.summary).toBe("Couldn't create the key: That Card was not found.");
+    expect(result.reveal).toBeUndefined();
+  });
+
+  it("create_api_key short-circuits on a missing name without hitting the db", async () => {
+    const result = await executeTool("create_api_key", {}, ctx);
+
+    expect(createApiKey).not.toHaveBeenCalled();
+    expect(result.forModel).toEqual({ error: "Missing name." });
   });
 });

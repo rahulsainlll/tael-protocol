@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChatMessage } from "./types";
+import { extractReveals, type RevealPayload } from "./reveal-protocol";
 
 function newId(): string {
   return crypto.randomUUID();
@@ -28,8 +29,15 @@ export function useChat({
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A revealed secret (e.g. a freshly created API key) is client-only state —
+  // it never enters `messages`, so it's never persisted and never resent to
+  // the model. Cleared on every new send() and whenever the caller dismisses
+  // it (see RevealedKeyCard).
+  const [revealedSecret, setRevealedSecret] = useState<RevealPayload | null>(null);
   const threadIdRef = useRef(initialThreadId);
   const abortRef = useRef<AbortController | null>(null);
+
+  const dismissReveal = useCallback(() => setRevealedSecret(null), []);
 
   const send = useCallback(
     async (text: string) => {
@@ -37,6 +45,7 @@ export function useChat({
       if (!trimmed || isStreaming) return;
 
       setError(null);
+      setRevealedSecret(null);
       const userMessage: ChatMessage = { id: newId(), role: "user", content: trimmed };
       const assistantId = newId();
       const nextMessages = [...messages, userMessage];
@@ -65,13 +74,24 @@ export function useChat({
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        // Raw, un-stripped text accumulated so far this turn. extractReveals
+        // re-scans the whole thing on every chunk (not just the delta) so a
+        // reveal marker split across two chunks/reads is handled correctly —
+        // it just shows up as "pending" until the rest arrives.
+        let rawBuffer = "";
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
+          rawBuffer += decoder.decode(value, { stream: true });
+          const { visible, reveals } = extractReveals(rawBuffer);
           setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + chunk } : m)),
+            prev.map((m) => (m.id === assistantId ? { ...m, content: visible } : m)),
           );
+          if (reveals.length > 0) {
+            // Only ever one create_api_key call is expected per turn in
+            // practice; if more ever arrive, keep the most recent.
+            setRevealedSecret(reveals[reveals.length - 1] ?? null);
+          }
         }
 
         if (isFirstTurn && returnedThreadId) {
@@ -97,5 +117,5 @@ export function useChat({
     abortRef.current?.abort();
   }, []);
 
-  return { messages, isStreaming, error, send, stop };
+  return { messages, isStreaming, error, send, stop, revealedSecret, dismissReveal };
 }

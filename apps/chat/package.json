@@ -23,6 +23,7 @@
     "@tael/claude": "workspace:*",
     "@tael/database": "workspace:*",
     "@tael/stellar": "workspace:*",
+    "@tael/types": "workspace:*",
     "@tael/ui": "workspace:*",
     "lucide-react": "catalog:",
     "next": "catalog:",
