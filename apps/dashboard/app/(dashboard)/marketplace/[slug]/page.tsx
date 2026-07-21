@@ -8,7 +8,6 @@ import { CapabilityLogo } from "../../../../features/capabilities/capability-log
 import { formatPrice, kindMeta, timeAgo } from "../../../../features/capabilities/kind-meta";
 import { UseCapabilityDialog } from "../../../../features/capabilities/use-capability-dialog";
 import { VerifyToggle } from "../../../../features/capabilities/verify-toggle";
-import { RunCapabilityDialog } from "../../../../features/agents/run-capability-dialog";
 import { OperationsExplorer } from "../../../../features/agents/operations-explorer";
 import { listAgentsForRun } from "../../../../features/agents/queries";
 import { ReviewsSection } from "../../../../features/reviews/reviews-section";
@@ -44,13 +43,6 @@ export default async function CapabilityDetailPage({
   const meta = kindMeta(capability.kind);
   const Icon = meta.icon;
   const operations = capability.spec.operations ?? [];
-  const runOp = (op: (typeof operations)[number], i: number) => ({
-    slug: op.slug || opSlug(op.name, i),
-    name: op.name || `Request ${i + 1}`,
-    price: formatPrice(op.price),
-    method: op.method || "GET",
-    body: op.sampleRequest ?? "",
-  });
   const contact = capability.contact;
   const contactHref = contact
     ? contact.startsWith("http")
@@ -86,12 +78,9 @@ export default async function CapabilityDetailPage({
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <RunCapabilityDialog
-            slug={capability.slug}
-            price={formatPrice(capability.price)}
-            agents={agentOptions}
-            operation={operations.length > 0 ? runOp(operations[0]!, 0) : undefined}
-          />
+          {isAdmin ? (
+            <VerifyToggle id={capability.id} verified={verified} variant="compact" />
+          ) : null}
           <UseCapabilityDialog
             endpoint={`${API_URL}/c/${capability.slug}`}
             price={`$${formatPrice(capability.price)}`}
@@ -133,11 +122,13 @@ export default async function CapabilityDetailPage({
       </div>
 
       {isAdmin ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <VerifyToggle id={capability.id} verified={verified} />
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed px-3 py-2">
+          <span className="text-xs text-muted-foreground">
+            Admin — set this capability&apos;s status from the header.
+          </span>
           <Link
             href={`/capabilities/${capability.id}/edit`}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
           >
             <Pencil className="h-4 w-4" /> Edit
           </Link>
@@ -167,7 +158,10 @@ export default async function CapabilityDetailPage({
         <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Verification
         </h2>
-        <VerificationTimeline verified={verified} />
+        <VerificationTimeline
+          status={capability.status}
+          publishedLabel={timeAgo(capability.createdAt.toISOString())}
+        />
       </section>
 
       {/* Description */}
