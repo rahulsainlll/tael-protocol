@@ -38,9 +38,8 @@ export function SiteHeader() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const activeLink = light
-    ? "border-b-2 border-black text-black"
-    : "border-b-2 border-white text-white";
+  // The home header marks no nav item active — the wordmark is "home". (Previously
+  // the first link was force-highlighted, which wrongly lit up "Capabilities".)
   const idleLink = light
     ? "px-0.5 text-[#606169] hover:text-black"
     : "px-0.5 text-[#CECECE] hover:text-white";
@@ -74,7 +73,7 @@ export function SiteHeader() {
                 key={i}
                 href={href}
                 {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                className={`${linkBase} ${i === 0 ? activeLink : idleLink}`}
+                className={`${linkBase} ${idleLink}`}
               >
                 {label}
               </a>

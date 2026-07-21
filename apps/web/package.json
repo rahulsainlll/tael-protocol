@@ -15,6 +15,10 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@heroui/react": "^2.8.10",
+    "@heroui/theme": "^2.4.26",
+    "@heroui/use-infinite-scroll": "^2.2.12",
+    "framer-motion": "^12.42.2",
     "next": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",

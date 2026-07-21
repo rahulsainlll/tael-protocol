@@ -1,9 +1,15 @@
 import type { Config } from "tailwindcss";
+import { heroui } from "@heroui/react";
 import preset from "@tael/config/tailwind";
 
 const config: Config = {
   presets: [preset],
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  content: [
+    "./app/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    // HeroUI's compiled theme (only the /capabilities page uses it).
+    "./node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}",
+  ],
   theme: {
     extend: {
       colors: {
@@ -25,6 +31,7 @@ const config: Config = {
       },
     },
   },
+  plugins: [heroui()],
 };
 
 export default config;
