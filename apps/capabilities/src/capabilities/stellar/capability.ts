@@ -9,7 +9,7 @@ export const meta: CapabilityMeta = {
   name: "Stellar",
   kind: "api",
   description:
-    "Stellar lookups for AI agents: account balances, account details, settled transactions, asset info, network status, DEX orderbook, recent trades, and account payments (all free), plus best-price swap quotes, plain-English transaction explanations, and USDC portfolio valuation (priced per call).",
+    "Stellar lookups for AI agents: account balances, account details, settled transactions, asset info, network status, DEX orderbook, recent trades, and account payments (all free), plus quote (best-price swaps), explain (plain-English transactions), and portfolio (USDC valuation) — priced per call.",
   faqs: [
     {
       question: "Which network does this read from?",
