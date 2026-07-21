@@ -193,6 +193,9 @@ export default async function CapabilityDetailPage({
             priceRaw: op.price ?? "0",
             sampleRequest: op.sampleRequest ?? "",
             sampleResponse: op.sampleResponse ?? "",
+            // Action ops return a `tael_action` intent to sign, not data — mark
+            // them so they read as "Action", never "Free".
+            isAction: (op.sampleResponse ?? "").includes("tael_action"),
           }))}
         />
       ) : null}
