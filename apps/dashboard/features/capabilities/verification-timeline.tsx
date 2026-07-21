@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { ComponentType } from "react";
-import { Rocket, ScanEye, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { ComponentType, PointerEvent as ReactPointerEvent } from "react";
+import { RotateCcw, Rocket, ScanEye, ShieldCheck } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import { cn } from "@tael/ui";
 
@@ -27,13 +27,33 @@ const PILL: Record<State, string> = {
   todo: "bg-muted text-muted-foreground",
 };
 
+/** A node's position: x as a fraction of the canvas width (stays responsive),
+ *  y in pixels. The tile is 48px; its centre is (fx·width, y + 24). */
+interface Pos {
+  fx: number;
+  y: number;
+}
+
+const CANVAS_H = 236; // px — room to drag the nodes around
+const TILE_HALF = 24;
+const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi);
+
+/** Evenly spread n nodes across the canvas at a comfortable resting height. */
+function defaultPositions(n: number): Pos[] {
+  return Array.from({ length: n }, (_, i) => ({
+    fx: n > 1 ? 0.14 + (i / (n - 1)) * 0.72 : 0.5,
+    y: 72,
+  }));
+}
+
 /**
- * The capability's real publish → verify journey, tied to its actual status
- * (`pending` | `verified`), not fabricated stages. Published is always reached;
- * "Under review" is the manual Tael review; "Verified" turns green only once
- * Tael grants the badge. Animations follow Emil Kowalski's rules: transform +
- * opacity only, ease-out, a mount-triggered line draw and a staggered entrance,
- * a gentle pulse on the in-flight step — all disabled under reduced motion.
+ * The capability's real publish → verify journey (Published → Under review →
+ * Verified), tied to its actual status — not fabricated always-done stages.
+ * The nodes are draggable: grab a tile and move it, and the connectors follow.
+ * Tap a node (without dragging) to read what that stage means. Animations follow
+ * Emil Kowalski's rules — transform/opacity only, ease-out, a mount-triggered
+ * line fade + staggered entrance, a soft pulse on the in-flight step — all
+ * disabled under reduced motion.
  */
 export function VerificationTimeline({
   status,
@@ -43,12 +63,14 @@ export function VerificationTimeline({
   publishedLabel: string;
 }) {
   const verified = status === "verified";
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
-  // Which step's detail is open. Defaults to the current stage (the active one,
-  // else the last done one) so there's something to read without a click.
   const [openStep, setOpenStep] = useState<number | null>(verified ? 2 : 1);
-  // Flip on the next frame so the line fill + entrances animate from their
-  // initial state instead of rendering already-complete.
+  const [pos, setPos] = useState<Pos[]>(() => defaultPositions(3));
+  const [moved, setMoved] = useState(false);
+  // Tracks the in-flight pointer drag without re-rendering on every check.
+  const drag = useRef<{ i: number; sx: number; sy: number; moved: boolean } | null>(null);
+
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(raf);
@@ -82,50 +104,93 @@ export function VerificationTimeline({
     },
   ];
 
+  function onPointerDown(e: ReactPointerEvent, i: number) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { i, sx: e.clientX, sy: e.clientY, moved: false };
+  }
+
+  function onPointerMove(e: ReactPointerEvent) {
+    const d = drag.current;
+    const canvas = canvasRef.current;
+    if (!d || !canvas) return;
+    // Ignore sub-pixel jitter so a tap doesn't count as a drag.
+    if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) < 4) return;
+    d.moved = true;
+    if (!moved) setMoved(true);
+    const rect = canvas.getBoundingClientRect();
+    const fx = clamp((e.clientX - rect.left) / rect.width, 0.07, 0.93);
+    const y = clamp(e.clientY - rect.top - TILE_HALF, 8, rect.height - 104);
+    setPos((prev) => prev.map((p, idx) => (idx === d.i ? { fx, y } : p)));
+  }
+
+  function onPointerUp(i: number) {
+    const wasDrag = drag.current?.moved;
+    drag.current = null;
+    // A tap (no drag) toggles the step's detail.
+    if (!wasDrag) setOpenStep((cur) => (cur === i ? null : i));
+  }
+
+  function reset() {
+    setPos(defaultPositions(steps.length));
+    setMoved(false);
+  }
+
   return (
-    <div
-      className="rounded-xl border p-8"
-      style={{
-        backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
-        backgroundSize: "14px 14px",
-        color: "rgb(120 120 120 / 0.14)",
-      }}
-    >
-      <div className="grid grid-cols-3 items-start gap-2 text-foreground">
+    <div>
+      <div
+        ref={canvasRef}
+        className="relative touch-none overflow-hidden rounded-xl border"
+        style={{
+          height: CANVAS_H,
+          backgroundImage: "radial-gradient(currentColor 1px, transparent 1px)",
+          backgroundSize: "14px 14px",
+          color: "rgb(120 120 120 / 0.14)",
+        }}
+      >
+        {/* Connectors — SVG lines between node centres; they follow on drag. */}
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-500 ease-out"
+          style={{ opacity: mounted ? 1 : 0 }}
+        >
+          {steps.slice(0, -1).map((step, i) => {
+            const a = pos[i]!;
+            const b = pos[i + 1]!;
+            const filled = step.state === "done" && steps[i + 1]!.state !== "todo";
+            return (
+              <line
+                key={i}
+                x1={`${a.fx * 100}%`}
+                y1={a.y + TILE_HALF}
+                x2={`${b.fx * 100}%`}
+                y2={b.y + TILE_HALF}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                className={filled ? "stroke-emerald-500/40" : "stroke-border"}
+              />
+            );
+          })}
+        </svg>
+
+        {/* Nodes — absolutely positioned, draggable, centred on their point. */}
         {steps.map((step, i) => {
           const Icon = step.icon;
-          const next = steps[i + 1];
-          // The connector to the next node fills once this node is done and the
-          // next one has been reached (done or active).
-          const filled = step.state === "done" && next && next.state !== "todo";
-          const isOpen = openStep === i;
+          const p = pos[i]!;
+          const open = openStep === i;
           return (
-            <button
+            <div
               key={step.label}
-              type="button"
-              onClick={() => setOpenStep(isOpen ? null : i)}
-              className="group relative flex flex-col items-center gap-2.5 text-center outline-none"
+              className="absolute flex w-32 -translate-x-1/2 flex-col items-center gap-2.5 text-center"
+              style={{ left: `${p.fx * 100}%`, top: p.y }}
             >
-              {/* Connector: a grey track with an emerald fill that draws in. */}
-              {next ? (
-                <span className="absolute left-1/2 top-6 -z-0 h-px w-full overflow-hidden bg-border">
-                  <span
-                    className="block h-full w-full origin-left bg-emerald-500/40 transition-transform duration-700 ease-out motion-reduce:transition-none"
-                    style={{
-                      transform: mounted && filled ? "scaleX(1)" : "scaleX(0)",
-                      transitionDelay: `${i * 180 + 260}ms`,
-                    }}
-                  />
-                </span>
-              ) : null}
-
-              {/* Icon tile — staggered entrance; hover/press feedback; selected ring. */}
               <span
+                onPointerDown={(e) => onPointerDown(e, i)}
+                onPointerMove={onPointerMove}
+                onPointerUp={() => onPointerUp(i)}
                 className={cn(
-                  "relative z-10 flex h-12 w-12 items-center justify-center rounded-xl border bg-background shadow-sm",
-                  "transition-transform duration-150 ease-out group-hover:scale-105 group-active:scale-95",
+                  "relative z-10 flex h-12 w-12 cursor-grab touch-none select-none items-center justify-center rounded-xl border bg-background shadow-sm active:cursor-grabbing",
+                  "transition-transform duration-150 ease-out hover:scale-105 active:scale-95",
                   "motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-90",
-                  isOpen && "ring-2 ring-foreground/15 ring-offset-2 ring-offset-background",
+                  open && "ring-2 ring-foreground/15 ring-offset-2 ring-offset-background",
                   TILE[step.state],
                 )}
                 style={{ animationDelay: `${i * 120}ms` }}
@@ -138,7 +203,7 @@ export function VerificationTimeline({
 
               <span
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-semibold duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1",
+                  "pointer-events-none rounded-md px-2.5 py-1 text-xs font-semibold duration-500 ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1",
                   PILL[step.state],
                 )}
                 style={{ animationDelay: `${i * 120 + 90}ms` }}
@@ -146,21 +211,35 @@ export function VerificationTimeline({
                 {step.label}
               </span>
               <span
-                className="text-xs text-muted-foreground duration-500 ease-out motion-safe:animate-in motion-safe:fade-in"
+                className="pointer-events-none text-xs text-muted-foreground duration-500 ease-out motion-safe:animate-in motion-safe:fade-in"
                 style={{ animationDelay: `${i * 120 + 160}ms` }}
               >
                 {step.subtitle}
               </span>
-            </button>
+            </div>
           );
         })}
+
+        {/* Affordance + reset — subtle, bottom corners. */}
+        <span className="pointer-events-none absolute bottom-3 left-3 text-[11px] text-muted-foreground/70">
+          Drag the steps · tap to read
+        </span>
+        {moved ? (
+          <button
+            type="button"
+            onClick={reset}
+            className="absolute bottom-2.5 right-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <RotateCcw className="h-3 w-3" /> Reset
+          </button>
+        ) : null}
       </div>
 
-      {/* Detail for the selected step — expands under the row, animated. */}
+      {/* Detail for the selected step — expands under the canvas, animated. */}
       {openStep !== null && steps[openStep] ? (
         <div
           key={openStep}
-          className="mt-6 flex items-start gap-2.5 rounded-lg border bg-background/70 p-3.5 text-sm text-muted-foreground duration-200 ease-out animate-in fade-in slide-in-from-top-1"
+          className="mt-3 flex items-start gap-2.5 rounded-lg border bg-background/70 p-3.5 text-sm text-muted-foreground duration-200 ease-out animate-in fade-in slide-in-from-top-1"
         >
           <span
             className={cn(
