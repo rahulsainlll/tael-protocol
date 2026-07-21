@@ -211,6 +211,19 @@ function RequestsTable({ requests }: { requests: CapabilityRequest[] }) {
   );
 }
 
+/** A tab label with a count badge that flips readable in both states:
+ *  white-on-dark when idle, dark-on-white when the tab is selected. */
+function TabTitle({ label, count }: { label: string; count: number }) {
+  return (
+    <span className="flex items-center gap-2">
+      {label}
+      <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-white/10 px-1.5 text-[11px] font-semibold tabular-nums text-white/50 group-data-[selected=true]:bg-black/[0.08] group-data-[selected=true]:text-black/70">
+        {count}
+      </span>
+    </span>
+  );
+}
+
 /** The toggle (Available / Requests) + a HeroUI table for the active tab. */
 export function CapabilitiesExplorer({
   capabilities,
@@ -233,37 +246,17 @@ export function CapabilitiesExplorer({
           radius="full"
           classNames={{
             tabList: "bg-white/[0.06] p-1",
-            cursor: "bg-white",
+            cursor: "!bg-white shadow-sm",
             tabContent: "text-white/55 group-data-[selected=true]:text-black font-medium",
             tab: "px-4 h-9",
           }}
         >
-          <Tab
-            key="available"
-            title={
-              <span className="flex items-center gap-2">
-                Available
-                <Chip size="sm" classNames={{ base: "bg-black/10", content: "text-[11px]" }}>
-                  {counts.available}
-                </Chip>
-              </span>
-            }
-          >
+          <Tab key="available" title={<TabTitle label="Available" count={counts.available} />}>
             <div className="mt-6 overflow-hidden rounded-xl border border-white/10">
               <AvailableTable capabilities={capabilities} />
             </div>
           </Tab>
-          <Tab
-            key="requests"
-            title={
-              <span className="flex items-center gap-2">
-                Requests
-                <Chip size="sm" classNames={{ base: "bg-black/10", content: "text-[11px]" }}>
-                  {counts.requests}
-                </Chip>
-              </span>
-            }
-          >
+          <Tab key="requests" title={<TabTitle label="Requests" count={counts.requests} />}>
             <div className="mt-6 overflow-hidden rounded-xl border border-white/10">
               <RequestsTable requests={requests} />
             </div>
