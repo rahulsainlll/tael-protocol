@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type KeyboardEvent } from "react";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowRight, Square } from "lucide-react";
 import { Button, Textarea } from "@tael/ui";
 
 export function Composer({
@@ -30,7 +30,7 @@ export function Composer({
 
   return (
     <div className="border-t border-border p-4">
-      <div className="mx-auto flex max-w-2xl items-end gap-2">
+      <div className="mx-auto flex max-w-2xl items-center gap-2">
         <Textarea
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -51,7 +51,7 @@ export function Composer({
             disabled={!value.trim()}
             aria-label="Send"
           >
-            <ArrowUp className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" />
           </Button>
         )}
       </div>

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@tael/ui";
 import type { ChatMessage } from "../../features/chat/types";
+import { parseContent } from "../../features/chat/parse-content";
 
 const SUGGESTIONS = [
   "What can I do on Tael?",
@@ -35,17 +36,49 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
   );
 }
 
+function ToolLine({ text }: { text: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="text-[#156DFC]">✦</span>
+      <span>{text}</span>
+    </div>
+  );
+}
+
 function Bubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+  const blocks = parseContent(message.content);
+
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[75ch] whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-sm leading-relaxed",
+          "max-w-[75ch] space-y-1.5 rounded-lg px-3.5 py-2.5 text-sm leading-relaxed",
           isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
         )}
       >
-        {message.content || <span className="animate-pulse text-muted-foreground">…</span>}
+        {blocks.length > 0 ? (
+          blocks.map((block, i) => {
+            if (block.type === "tool") return <ToolLine key={i} text={block.text} />;
+            if (block.type === "code") {
+              return (
+                <pre
+                  key={i}
+                  className="overflow-x-auto rounded-md bg-background/60 px-3 py-2 font-mono text-xs"
+                >
+                  {block.text}
+                </pre>
+              );
+            }
+            return (
+              <p key={i} className="whitespace-pre-wrap">
+                {block.text}
+              </p>
+            );
+          })
+        ) : (
+          <span className="animate-pulse text-muted-foreground">…</span>
+        )}
       </div>
     </div>
   );
