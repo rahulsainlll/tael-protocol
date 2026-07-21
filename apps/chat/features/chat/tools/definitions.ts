@@ -18,7 +18,7 @@ export const DISCOVERY_TOOLS: Anthropic.Tool[] = [
       properties: {
         query: {
           type: "string",
-          description: "Keywords to search for, e.g. \"weather forecast\" or \"pdf ocr\".",
+          description: 'Keywords to search for, e.g. "weather forecast" or "pdf ocr".',
         },
       },
       required: ["query"],

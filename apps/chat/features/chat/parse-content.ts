@@ -1,7 +1,5 @@
 export type ContentBlock =
-  | { type: "tool"; text: string }
-  | { type: "code"; text: string }
-  | { type: "p"; text: string };
+  { type: "tool"; text: string } | { type: "code"; text: string } | { type: "p"; text: string };
 
 export function parseContent(content: string): ContentBlock[] {
   const blocks: ContentBlock[] = [];
@@ -43,7 +41,7 @@ export function parseContent(content: string): ContentBlock[] {
     }
     paragraph.push(line);
   }
-  if (inCode) blocks.push({ type: "code", text: codeLines.join("\n") }); 
+  if (inCode) blocks.push({ type: "code", text: codeLines.join("\n") });
   flushParagraph();
 
   return blocks;

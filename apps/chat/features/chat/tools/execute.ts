@@ -28,7 +28,10 @@ export async function executeTool(
     case "search_capabilities": {
       const query = String(input.query ?? "").trim();
       if (!query) {
-        return { forModel: { error: "Missing query." }, summary: "Search skipped — no query given." };
+        return {
+          forModel: { error: "Missing query." },
+          summary: "Search skipped — no query given.",
+        };
       }
       const results = await searchCapabilities(query);
       return {
