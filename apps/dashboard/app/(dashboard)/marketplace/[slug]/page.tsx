@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgeCheck, ChevronDown, Pencil } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Check, ChevronDown, Pencil } from "lucide-react";
 import { cn } from "@tael/ui";
 import { getPublicCapabilityBySlug } from "../../../../features/capabilities/queries";
 import { isCurrentUserAdmin } from "../../../../features/capabilities/actions";
@@ -74,7 +74,14 @@ export default async function CapabilityDetailPage({
           <p className="text-sm text-muted-foreground">Capability</p>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             {capability.name}
-            {verified ? <BadgeCheck className="h-5 w-5 text-emerald-600" /> : null}
+            {verified ? (
+              <span
+                title="Verified by Tael"
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm"
+              >
+                <Check className="h-3 w-3" strokeWidth={3.5} />
+              </span>
+            ) : null}
           </h1>
         </div>
         <div className="flex items-center gap-2">
