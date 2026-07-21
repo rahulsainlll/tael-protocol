@@ -18,7 +18,6 @@ function shortAddress(address: string): string {
   return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
-
 export function ChatHeader({ address }: { address: string }) {
   const router = useRouter();
 

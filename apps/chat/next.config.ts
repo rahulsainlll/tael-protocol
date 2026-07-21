@@ -13,6 +13,6 @@ const config: NextConfig = {
   // Compile the workspace packages consumed as TypeScript source.
   transpilePackages: ["@tael/ui", "@tael/auth", "@tael/stellar", "@tael/database", "@tael/claude"],
   serverExternalPackages: ["@stellar/stellar-sdk", "postgres", "@anthropic-ai/sdk"],
- };
+};
 
 export default config;

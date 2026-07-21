@@ -5,7 +5,7 @@ import { capabilities } from "./capabilities";
 import { agents } from "./agents";
 import { payments } from "./payments";
 import { apiKeys } from "./api-keys";
-import {chatThreads, chatMessages} from "./chat";
+import { chatThreads, chatMessages } from "./chat";
 
 // Typed relations enable Drizzle's relational query API (db.query.users.findMany
 // with `with: { wallets: true }`, etc.) without hand-written joins.

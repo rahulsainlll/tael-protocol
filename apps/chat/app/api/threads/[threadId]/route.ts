@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "../../../../features/auth/current-user";
 import { deleteThread, getThreadWithMessages } from "../../../../features/threads/queries";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ threadId: string }> }) {
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ threadId: string }> },
+) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 

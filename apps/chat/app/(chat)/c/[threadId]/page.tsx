@@ -4,11 +4,7 @@ import { getCurrentUser } from "../../../../features/auth/current-user";
 import { getThreadWithMessages } from "../../../../features/threads/queries";
 import type { ChatMessage } from "../../../../features/chat/types";
 
-export default async function ThreadPage({
-  params,
-}: {
-  params: Promise<{ threadId: string }>;
-}) {
+export default async function ThreadPage({ params }: { params: Promise<{ threadId: string }> }) {
   const { threadId } = await params;
   const user = await getCurrentUser();
   if (!user) notFound();

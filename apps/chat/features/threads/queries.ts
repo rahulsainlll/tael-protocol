@@ -60,11 +60,7 @@ export async function assertOwnsThread(threadId: string, userId: string): Promis
 }
 
 /** Append one message and bump the thread's `updatedAt` (sidebar ordering). */
-export async function appendMessage(
-  threadId: string,
-  role: "user" | "assistant",
-  content: string,
-) {
+export async function appendMessage(threadId: string, role: "user" | "assistant", content: string) {
   await db.insert(chatMessages).values({ threadId, role, content });
   await db.update(chatThreads).set({ updatedAt: new Date() }).where(eq(chatThreads.id, threadId));
 }
