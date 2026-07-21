@@ -12,6 +12,7 @@ const config: NextConfig = {
   reactStrictMode: true,
   // Compile the workspace packages consumed as TypeScript source.
   transpilePackages: ["@tael/ui", "@tael/auth", "@tael/stellar"],
+  serverExternalPackages: ["@anthropic-ai/sdk"],
 };
 
 export default config;
