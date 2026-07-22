@@ -27,7 +27,15 @@ const HORIZON_URL = process.env.STELLAR_HORIZON_URL ?? "https://horizon-testnet.
 const USDC_ISSUER =
   process.env.USDC_ISSUER ?? "GBCDXWBEN7YMCBI3DPIWQ5QBGG2NE7G5REZLNJI2E57VVNVDQM7PF7RA";
 const FEE_ADDRESS = process.env.TAEL_FEE_ADDRESS ?? "";
-const ACTION_FEE = process.env.TAEL_ACTION_FEE ?? "0.001";
+// Tael's cut of an action, in basis points of the amount sent (100 = 1%).
+const ACTION_FEE_BPS = Number(process.env.TAEL_ACTION_FEE_BPS ?? "100");
+
+/** Tael's fee for sending `amount` USDC, as a 7-decimal string (Stellar USDC
+ *  precision). Zero when no fee wallet is set or the fee rounds to nothing. */
+function actionFee(amount: string): string {
+  if (!FEE_ADDRESS || !(ACTION_FEE_BPS > 0)) return "0";
+  return ((Number(amount) * ACTION_FEE_BPS) / 10_000).toFixed(7);
+}
 
 interface Requirement {
   network: string;
@@ -307,7 +315,9 @@ async function runPayAction(
   secretEnc: string,
 ): Promise<RunResult> {
   const amount = Money.parse(intent.amount);
-  const fee = FEE_ADDRESS ? Money.parse(ACTION_FEE) : Money.parse("0");
+  const feeStr = actionFee(intent.amount);
+  const chargeFee = Number(feeStr) > 0;
+  const fee = Money.parse(feeStr);
   const total = amount.add(fee);
 
   // Enforce the spending policy BEFORE signing — same gates as a paid call.
@@ -335,7 +345,7 @@ async function runPayAction(
 
   try {
     const legs = [{ to: intent.to, amount: intent.amount }];
-    if (FEE_ADDRESS) legs.push({ to: FEE_ADDRESS, amount: ACTION_FEE });
+    if (chargeFee) legs.push({ to: FEE_ADDRESS, amount: feeStr });
     const xdr = await buildSignedPayment({
       secret: decryptSecret(secretEnc),
       network: STELLAR_NETWORK,
@@ -353,7 +363,7 @@ async function runPayAction(
       action: "pay",
       to: intent.to,
       amount: intent.amount,
-      fee: FEE_ADDRESS ? ACTION_FEE : "0",
+      fee: feeStr,
       asset: "USDC",
       txHash: receipt.txHash,
     };
