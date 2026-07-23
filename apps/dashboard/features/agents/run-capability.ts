@@ -11,10 +11,16 @@ import {
   wallets,
 } from "@tael/database";
 import { Money } from "@tael/types";
-import { buildSignedPayment, createStellarSettlement, TAEL_MEMO } from "@tael/stellar";
+import {
+  buildSignedPayment,
+  buildSignedSwap,
+  createStellarSettlement,
+  type SwapAsset,
+  TAEL_MEMO,
+} from "@tael/stellar";
 import { db } from "../../lib/db";
 import { getCurrentUser } from "../capabilities/current-user";
-import { fetchUsdcBalance } from "./balance";
+import { fetchAccountBalances, fetchUsdcBalance } from "./balance";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const STELLAR_NETWORK = process.env.STELLAR_NETWORK === "mainnet" ? "mainnet" : "testnet";
@@ -167,8 +173,10 @@ export async function runCapability(input: {
       // Action ops return a `tael_action` intent to SIGN, not data. If we get
       // one, the agent's card signs it and submits it on-chain (with Tael's fee
       // baked into the same transaction), after enforcing the spending policy.
-      const intent = parsePayIntent(body);
-      if (intent) return runPayAction(intent, agent.address, agent.policy, secretEnc);
+      const pay = parsePayIntent(body);
+      if (pay) return runPayAction(pay, agent.address, agent.policy, secretEnc);
+      const swap = parseSwapIntent(body);
+      if (swap) return runSwapAction(swap, agent.address, agent.policy, secretEnc);
       return { ok: true, status: direct.status, body, paid: "0" };
     }
     const body = (await res.json()) as { accepts: Requirement[] };
@@ -374,6 +382,187 @@ async function runPayAction(
       ok: false,
       error:
         "The payment couldn't be submitted. Check the card is funded and the destination trusts USDC.",
+    };
+  }
+}
+
+/** The validated Swap intent an action capability returns to be signed. */
+interface SwapIntent {
+  from: string;
+  to: string;
+  send: SwapAsset;
+  sendAmount: string;
+  dest: SwapAsset;
+  destMin: string;
+  estDest: string;
+  path: SwapAsset[];
+}
+
+function isSwapAsset(v: unknown): v is SwapAsset {
+  return (
+    Boolean(v) &&
+    typeof v === "object" &&
+    typeof (v as Record<string, unknown>).asset_type === "string"
+  );
+}
+
+/** Parse a capability response into a Swap intent, or null if it isn't one. */
+function parseSwapIntent(body: string): SwapIntent | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object") return null;
+  const p = parsed as Record<string, unknown>;
+  if (p.tael_action !== "swap") return null;
+  if (
+    typeof p.from !== "string" ||
+    typeof p.to !== "string" ||
+    typeof p.sendAmount !== "string" ||
+    typeof p.destMin !== "string" ||
+    !isSwapAsset(p.send) ||
+    !isSwapAsset(p.dest) ||
+    !Array.isArray(p.path) ||
+    !p.path.every(isSwapAsset)
+  ) {
+    return null;
+  }
+  return {
+    from: p.from,
+    to: p.to,
+    send: p.send,
+    sendAmount: p.sendAmount,
+    dest: p.dest,
+    destMin: p.destMin,
+    estDest: typeof p.estDest === "string" ? p.estDest : p.destMin,
+    path: p.path,
+  };
+}
+
+/** Is this asset the USDC Tael settles in? */
+function isUsdcAsset(a: SwapAsset): boolean {
+  return a.asset_type !== "native" && a.asset_code === "USDC";
+}
+
+/**
+ * Execute a Swap action: enforce the spending policy, build ONE transaction (a
+ * strict-send path payment that converts send→dest on the agent's own card, plus
+ * Tael's USDC fee), sign it with the card, and submit. The swap and the fee settle
+ * atomically. `destMin` (the slippage floor set at quote time) guarantees the card
+ * never accepts a worse fill than it was shown; if the market moved past it the
+ * whole transaction fails and nothing trades.
+ */
+async function runSwapAction(
+  intent: SwapIntent,
+  address: string,
+  policy: { maxPerCall: string; dailyLimit: string } | null,
+  secretEnc: string,
+): Promise<RunResult> {
+  const fee = FEE_ADDRESS ? Money.parse(ACTION_FEE) : Money.parse("0");
+  // Value the trade in USDC for the caps: whichever side is USDC. Selling USDC uses
+  // the exact amount spent; buying USDC uses the guaranteed minimum received. (v1
+  // always has a USDC side, so one of these holds.)
+  const usdValue = isUsdcAsset(intent.send)
+    ? Money.parse(intent.sendAmount)
+    : Money.parse(intent.destMin);
+  const capTotal = usdValue.add(fee);
+  // What actually leaves the card as USDC (for the receipt's "paid"): the sold USDC
+  // if selling USDC, plus the fee. A buy (XLM→USDC) only spends the fee in USDC.
+  const usdcOut = (
+    isUsdcAsset(intent.send) ? Money.parse(intent.sendAmount) : Money.parse("0")
+  ).add(fee);
+
+  // Enforce the spending policy BEFORE signing — same gates as a paid call.
+  if (policy) {
+    if (capTotal.isGreaterThan(Money.parse(policy.maxPerCall))) {
+      return {
+        ok: false,
+        error: `Over the per-call cap ($${capTotal.toDecimalString()} > $${policy.maxPerCall}).`,
+      };
+    }
+    const projected = (await spentLast24h(address)).add(capTotal);
+    if (projected.isGreaterThan(Money.parse(policy.dailyLimit))) {
+      return { ok: false, error: `Would exceed the daily limit of $${policy.dailyLimit}.` };
+    }
+  }
+
+  // The card must hold enough of the SEND asset, and — after the swap — enough USDC
+  // to cover Tael's fee (which settles as the second op, so a swap INTO USDC can
+  // fund its own fee from what it just received).
+  const bal = await fetchAccountBalances(address);
+  if (!bal.funded) return { ok: false, error: "This card isn't funded yet." };
+
+  if (isUsdcAsset(intent.send)) {
+    const need = Money.parse(intent.sendAmount).add(fee);
+    if (need.isGreaterThan(Money.parse(bal.usdc))) {
+      return {
+        ok: false,
+        error: `Not enough USDC. This card has $${bal.usdc}, the swap needs $${need.toDecimalString()}. Fund it first.`,
+      };
+    }
+  } else {
+    // Selling XLM: leave the account's base reserve intact ((2 + subentries) × 0.5
+    // XLM) plus a small buffer for the network fee, so the swap can't strand the
+    // account below its minimum.
+    const reserve = (2 + bal.subentryCount) * 0.5 + 0.5;
+    const spendableXlm = Number(bal.xlm) - reserve;
+    if (Number(intent.sendAmount) > spendableXlm) {
+      return {
+        ok: false,
+        error: `Not enough spendable XLM. This card has ${bal.xlm} XLM (~${Math.max(0, spendableXlm).toFixed(2)} after reserves), the swap sells ${intent.sendAmount}.`,
+      };
+    }
+    // The fee is paid in USDC, from what the swap yields (or an existing balance).
+    const projectedUsdc = Money.parse(bal.usdc).add(
+      isUsdcAsset(intent.dest) ? Money.parse(intent.destMin) : Money.parse("0"),
+    );
+    if (fee.isGreaterThan(projectedUsdc)) {
+      return {
+        ok: false,
+        error: `The card needs $${ACTION_FEE} USDC for the Tael fee. Add a little USDC first.`,
+      };
+    }
+  }
+
+  try {
+    const xdr = await buildSignedSwap({
+      secret: decryptSecret(secretEnc),
+      network: STELLAR_NETWORK,
+      horizonUrl: HORIZON_URL,
+      send: intent.send,
+      sendAmount: intent.sendAmount,
+      dest: intent.dest,
+      destMin: intent.destMin,
+      path: intent.path,
+      ...(FEE_ADDRESS
+        ? { fee: { to: FEE_ADDRESS, amount: ACTION_FEE, usdcIssuer: USDC_ISSUER } }
+        : {}),
+      memo: TAEL_MEMO,
+    });
+    const receipt = await createStellarSettlement({
+      network: STELLAR_NETWORK,
+      horizonUrl: HORIZON_URL,
+      usdcIssuer: USDC_ISSUER,
+    }).submitSignedTransaction(xdr);
+    const result = {
+      action: "swap",
+      from: intent.from,
+      to: intent.to,
+      sold: intent.sendAmount,
+      minReceived: intent.destMin,
+      estReceived: intent.estDest,
+      fee: FEE_ADDRESS ? ACTION_FEE : "0",
+      txHash: receipt.txHash,
+    };
+    return { ok: true, status: 200, body: JSON.stringify(result), paid: usdcOut.toDecimalString() };
+  } catch (error) {
+    console.error("[run] swap action failed:", error);
+    return {
+      ok: false,
+      error:
+        "The swap couldn't be submitted. The market may have moved past your slippage limit — try again.",
     };
   }
 }

@@ -10,3 +10,4 @@ export * from "./payment-verify";
 export * from "./keypair";
 export * from "./provision";
 export * from "./pay";
+export * from "./swap";
