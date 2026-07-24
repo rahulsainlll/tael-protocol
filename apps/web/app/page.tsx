@@ -95,7 +95,7 @@ export default function HomePage() {
               For AI agents.
             </h1>
             <p className="max-w-[430px] text-[18px] font-normal leading-[26px] tracking-[-0.035em] text-white">
-              Pay for every API you use. 100 apps and 3000 actions, all in one platform.
+              Pay per call in USDC. No keys, no accounts, no subscriptions.
             </p>
           </div>
 
