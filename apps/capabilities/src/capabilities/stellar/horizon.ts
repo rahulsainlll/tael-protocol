@@ -587,3 +587,61 @@ export async function getPayments(address: string, limit: number): Promise<Accou
     payments,
   };
 }
+
+export interface EffectItem {
+  id: string;
+  type: string;
+  asset: string | null;
+  amount: string | null;
+  createdAt: string;
+}
+
+export interface AccountEffectsResult {
+  account: string;
+  effects: EffectItem[];
+}
+
+interface HorizonEffectRecord {
+  id: string;
+  type: string;
+  created_at: string;
+  account: string;
+  amount?: string;
+  asset_type?: string;
+  asset_code?: string;
+  asset_issuer?: string;
+  asset?: string;
+}
+
+/** Recent effects (what changed) for an account. */
+export async function getEffects(account: string, limit: number): Promise<AccountEffectsResult> {
+  const { ok, data } = await horizon(`/accounts/${account}/effects?order=desc&limit=${limit}`);
+  if (!ok) throw new Error("account not found");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonEffectRecord[] } })?._embedded?.records ?? [];
+
+  const effects: EffectItem[] = records.map((r) => {
+    let asset: string | null = null;
+    if (r.asset) {
+      asset = r.asset === "native" ? "XLM" : r.asset;
+    } else if (r.asset_type === "native") {
+      asset = "XLM";
+    } else if (r.asset_code && r.asset_issuer) {
+      asset = `${r.asset_code}:${r.asset_issuer}`;
+    }
+
+    return {
+      id: r.id,
+      type: r.type,
+      asset,
+      amount: r.amount ?? null,
+      createdAt: r.created_at,
+    };
+  });
+
+  return {
+    account,
+    effects,
+  };
+}
