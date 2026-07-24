@@ -460,13 +460,16 @@ async function runSwapAction(
   policy: { maxPerCall: string; dailyLimit: string } | null,
   secretEnc: string,
 ): Promise<RunResult> {
-  const fee = FEE_ADDRESS ? Money.parse(ACTION_FEE) : Money.parse("0");
-  // Value the trade in USDC for the caps: whichever side is USDC. Selling USDC uses
-  // the exact amount spent; buying USDC uses the guaranteed minimum received. (v1
-  // always has a USDC side, so one of these holds.)
+  // Value the trade in USDC for the caps + the fee: whichever side is USDC. Selling
+  // USDC uses the exact amount spent; buying USDC uses the guaranteed minimum
+  // received. (v1 always has a USDC side, so one of these holds.)
   const usdValue = isUsdcAsset(intent.send)
     ? Money.parse(intent.sendAmount)
     : Money.parse(intent.destMin);
+  // Tael's fee is a percentage of the trade's USDC value (same model as Pay).
+  const feeStr = actionFee(usdValue.toDecimalString());
+  const chargeFee = Number(feeStr) > 0;
+  const fee = Money.parse(feeStr);
   const capTotal = usdValue.add(fee);
   // What actually leaves the card as USDC (for the receipt's "paid"): the sold USDC
   // if selling USDC, plus the fee. A buy (XLM→USDC) only spends the fee in USDC.
@@ -521,7 +524,7 @@ async function runSwapAction(
     if (fee.isGreaterThan(projectedUsdc)) {
       return {
         ok: false,
-        error: `The card needs $${ACTION_FEE} USDC for the Tael fee. Add a little USDC first.`,
+        error: `The card needs $${feeStr} USDC for the Tael fee. Add a little USDC first.`,
       };
     }
   }
@@ -536,9 +539,7 @@ async function runSwapAction(
       dest: intent.dest,
       destMin: intent.destMin,
       path: intent.path,
-      ...(FEE_ADDRESS
-        ? { fee: { to: FEE_ADDRESS, amount: ACTION_FEE, usdcIssuer: USDC_ISSUER } }
-        : {}),
+      ...(chargeFee ? { fee: { to: FEE_ADDRESS, amount: feeStr, usdcIssuer: USDC_ISSUER } } : {}),
       memo: TAEL_MEMO,
     });
     const receipt = await createStellarSettlement({
@@ -553,7 +554,7 @@ async function runSwapAction(
       sold: intent.sendAmount,
       minReceived: intent.destMin,
       estReceived: intent.estDest,
-      fee: FEE_ADDRESS ? ACTION_FEE : "0",
+      fee: feeStr,
       txHash: receipt.txHash,
     };
     return { ok: true, status: 200, body: JSON.stringify(result), paid: usdcOut.toDecimalString() };

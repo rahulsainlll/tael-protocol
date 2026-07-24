@@ -262,7 +262,7 @@ export function CapabilitiesExplorer({
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <a
-                href="https://github.com/rahulsainlll/tael-protocol/issues/new?labels=good-first-capability&title=good-first-capability%3A%20"
+                href="https://github.com/tael-protocol/tael/issues/new?labels=good-first-capability&title=good-first-capability%3A%20"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition-[opacity,transform] duration-150 hover:opacity-90 active:scale-[0.97]"

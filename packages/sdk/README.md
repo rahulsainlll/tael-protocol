@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@tael/sdk?logo=npm&color=000000)](https://www.npmjs.com/package/@tael/sdk)
 [![npm downloads](https://img.shields.io/npm/dm/@tael/sdk?color=000000)](https://www.npmjs.com/package/@tael/sdk)
-[![license](https://img.shields.io/npm/l/@tael/sdk?color=000000)](https://github.com/rahulsainlll/tael-protocol/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/@tael/sdk?color=000000)](https://github.com/tael-protocol/tael/blob/main/LICENSE)
 
 The official SDK for [Tael](https://taelprotocol.xyz), the payment layer for AI agents. Two sides in one package:
 

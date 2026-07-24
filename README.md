@@ -16,7 +16,7 @@ Agents, MCP tools, and APIs supported. Payments settled in USDC on Stellar.
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@tael/sdk"><img alt="npm version" src="https://img.shields.io/npm/v/@tael/sdk?logo=npm&label=%40tael%2Fsdk&color=000000" /></a>
-  <a href="https://github.com/rahulsainlll/tael-protocol/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/rahulsainlll/tael-protocol?logo=github&color=000000" /></a>
+  <a href="https://github.com/tael-protocol/tael/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/tael-protocol/tael?logo=github&color=000000" /></a>
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-000000.svg" /></a>
   <a href="https://discord.gg/UtW9dZKwBW"><img alt="Discord community" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white" /></a>
   <a href="https://x.com/taelprotocol"><img alt="Follow @taelprotocol" src="https://img.shields.io/badge/Follow-%40taelprotocol-000000?logo=x&logoColor=white" /></a>
@@ -119,7 +119,7 @@ Apps: **`web`** (marketing site), **`dashboard`** (the console), **`api`** (the 
 ## Build and run from source
 
 ```bash
-git clone https://github.com/rahulsainlll/tael-protocol.git
+git clone https://github.com/tael-protocol/tael.git
 cd tael-protocol
 pnpm install
 cp .env.example .env   # add your keys (Stellar, database, auth secret)

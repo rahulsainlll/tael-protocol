@@ -5,7 +5,7 @@ import {
 } from "./_components/capabilities-explorer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://tael-protocol.onrender.com";
-const REPO = "rahulsainlll/tael-protocol";
+const REPO = "tael-protocol/tael";
 
 // The page is a live directory, so refresh the catalog often.
 export const revalidate = 60;

@@ -6,7 +6,7 @@ deployment: every push to the production branch deploys, and every PR gets a pre
 **No custom domain required** — Vercel provides free `*.vercel.app` subdomains. Add a real domain
 later (see [Custom domain](#custom-domain-later)).
 
-Repo: `github.com/rahulsainlll/tael-protocol`.
+Repo: `github.com/tael-protocol/tael`.
 
 ---
 
@@ -14,7 +14,7 @@ Repo: `github.com/rahulsainlll/tael-protocol`.
 
 On [vercel.com](https://vercel.com) (sign in with GitHub):
 
-1. **Add New → Project** → import `rahulsainlll/tael-protocol`.
+1. **Add New → Project** → import `tael-protocol/tael`.
 2. **Root Directory:** `apps/web` ← the one setting that matters for a monorepo.
 3. **Framework Preset:** Next.js (auto-detected).
 4. Leave **Build** and **Install** commands as default — Vercel detects the pnpm workspace and installs

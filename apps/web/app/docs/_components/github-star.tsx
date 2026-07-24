@@ -1,4 +1,4 @@
-const REPO = "rahulsainlll/tael-protocol";
+const REPO = "tael-protocol/tael";
 const REPO_URL = `https://github.com/${REPO}`;
 
 /** Fetch the repo's star count, revalidated hourly. Returns null on failure. */
