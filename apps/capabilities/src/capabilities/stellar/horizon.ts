@@ -587,3 +587,35 @@ export async function getPayments(address: string, limit: number): Promise<Accou
     payments,
   };
 }
+
+export interface FeeStats {
+  lastLedgerBaseFee: string;
+  min: string;
+  mode: string;
+  p50: string;
+  p90: string;
+}
+
+interface HorizonFeeStats {
+  last_ledger_base_fee: string;
+  fee_charged: {
+    min: string;
+    mode: string;
+    p50: string;
+    p90: string;
+  };
+}
+
+/** Recommended base fee stats for the next ledger. */
+export async function getFeeStats(): Promise<FeeStats> {
+  const { ok, data } = await horizon("/fee_stats");
+  if (!ok) throw new Error("horizon unavailable");
+  const stats = data as HorizonFeeStats;
+  return {
+    lastLedgerBaseFee: stats.last_ledger_base_fee,
+    min: stats.fee_charged.min,
+    mode: stats.fee_charged.mode,
+    p50: stats.fee_charged.p50,
+    p90: stats.fee_charged.p90,
+  };
+}
