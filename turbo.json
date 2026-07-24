@@ -2,7 +2,16 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "globalDependencies": ["**/.env", "tsconfig.json"],
-  "globalEnv": ["NODE_ENV"],
+  "globalEnv": [
+    "NODE_ENV",
+    "OPENROUTER_API_KEY",
+    "OPENROUTER_MODEL",
+    "RESEND_API_KEY",
+    "WAITLIST_NOTIFY_EMAIL",
+    "WAITLIST_FROM_EMAIL",
+    "AGENT_NOTIFY_EMAIL",
+    "NEXT_PUBLIC_TAEL_BOOKING_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
