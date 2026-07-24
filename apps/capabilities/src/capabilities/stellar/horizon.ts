@@ -587,3 +587,43 @@ export async function getPayments(address: string, limit: number): Promise<Accou
     payments,
   };
 }
+
+export interface ClaimableBalanceItem {
+  id: string;
+  asset: string;
+  amount: string;
+}
+
+export interface ClaimableBalancesResult {
+  claimant: string;
+  balances: ClaimableBalanceItem[];
+}
+
+interface HorizonClaimableBalance {
+  id: string;
+  asset: string;
+  amount: string;
+}
+
+/** Claimable balances a claimant is eligible to claim. */
+export async function getClaimableBalances(
+  claimant: string,
+  limit: number,
+): Promise<ClaimableBalancesResult> {
+  const { ok, data } = await horizon(`/claimable_balances?claimant=${claimant}&limit=${limit}`);
+  if (!ok) throw new Error("horizon unavailable");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonClaimableBalance[] } })?._embedded?.records ?? [];
+
+  const balances: ClaimableBalanceItem[] = records.map((r) => ({
+    id: r.id,
+    asset: r.asset === "native" ? "XLM" : r.asset,
+    amount: r.amount,
+  }));
+
+  return {
+    claimant,
+    balances,
+  };
+}
