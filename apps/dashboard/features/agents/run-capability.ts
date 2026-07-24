@@ -88,6 +88,49 @@ async function tryDrawTrustLineCredit(secretEnc: string, shortfallUsdc: string):
   }
 }
 
+/**
+ * The responsible other half of the credit relationship: pay DOWN what the
+ * agent owes TrustLine, out of spare cash, whenever it has some. Borrow and
+ * repay are separate on-chain events — you repay LATER, from revenue the work
+ * earned, not from the cash you just spent — so this runs opportunistically:
+ * after any successful call, if the agent now holds cash above a working buffer
+ * and still owes TrustLine, it repays the smaller of {what it owes, its spare}.
+ *
+ * Same two consent gates as borrowing (TRUSTLINE_API + policy.allowCreditDraw):
+ * an owner who opted this agent into taking on debt has, by the same choice,
+ * authorized it to service that debt autonomously. `bufferUsdc` is the float we
+ * never touch — set it to the agent's max-per-call so it always keeps enough to
+ * make one more purchase. Fully best-effort: any failure just leaves the debt
+ * open (repaid on a later call), and NEVER affects the call that already
+ * succeeded — this is called after the response is in hand.
+ */
+async function maybeRepayTrustLineCredit(secretEnc: string, bufferUsdc: string): Promise<void> {
+  if (!TRUSTLINE_API) return;
+  try {
+    const { TrustLineAgent } = await import("@trustline-agents/agent-sdk");
+    const tl = new TrustLineAgent(decryptSecret(secretEnc), { apiBaseUrl: TRUSTLINE_API });
+
+    // What does it owe right now (principal + accrued interest)?
+    const state = await tl.vaultState();
+    const owed = Number(state.amountOwedUsdc);
+    if (!(owed > 0)) return; // nothing outstanding — done
+
+    // Only ever repay from SPARE cash above the working buffer, so we never
+    // starve the agent of the float it needs to keep operating.
+    const bal = await tl.usdcBalanceUsdc();
+    const spare = bal - Number(bufferUsdc);
+    if (!(spare > 0)) return; // earned nothing spare — repay on a later call
+
+    const repayAmt = Math.min(owed, spare);
+    // Round down to USDC precision (7dp) so we never over-request by a rounding dust.
+    const amount = Math.floor(repayAmt * 1e7) / 1e7;
+    if (!(amount > 0)) return;
+    await tl.repay(amount);
+  } catch (error) {
+    console.error("[run] TrustLine repay skipped (debt stays open for a later call):", error);
+  }
+}
+
 /** Sum the total (amount + fee) this wallet paid in the last 24h, from the ledger. */
 async function spentLast24h(payer: string): Promise<Money> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -273,6 +316,16 @@ export async function runCapability(input: {
     const body = await res.text();
     if (!res.ok) {
       return { ok: false, status: res.status, body, error: friendlyError(res.status) };
+    }
+    // Call succeeded and the response is in hand. If this agent carries a
+    // TrustLine balance and now holds spare cash, opportunistically pay it down
+    // — the responsible other half of the credit relationship. Gated on the
+    // same opt-in as borrowing; best-effort so it can never affect the result
+    // we're about to return. Buffer = the per-call cap so it keeps enough for
+    // one more purchase (default to the price we just paid if no policy set).
+    if (agent.policy?.allowCreditDraw) {
+      const buffer = agent.policy?.maxPerCall ?? total.toDecimalString();
+      await maybeRepayTrustLineCredit(secretEnc, buffer);
     }
     return { ok: true, status: res.status, body, paid: total.toDecimalString() };
   } catch {
