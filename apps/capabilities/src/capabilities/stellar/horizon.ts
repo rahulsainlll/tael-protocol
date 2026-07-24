@@ -588,6 +588,62 @@ export async function getPayments(address: string, limit: number): Promise<Accou
   };
 }
 
+export interface OfferItem {
+  id: string;
+  selling: string;
+  buying: string;
+  amount: string;
+  price: string;
+}
+
+export interface AccountOffersResult {
+  account: string;
+  offers: OfferItem[];
+}
+
+interface HorizonOfferAsset {
+  asset_type: string;
+  asset_code?: string;
+  asset_issuer?: string;
+}
+
+interface HorizonOfferRecord {
+  id: string;
+  selling: HorizonOfferAsset;
+  buying: HorizonOfferAsset;
+  amount: string;
+  price: string;
+}
+
+/** Open DEX offers (resting orders) for an account. */
+export async function getOffers(account: string, limit: number): Promise<AccountOffersResult> {
+  const { ok, data } = await horizon(`/accounts/${account}/offers?order=desc&limit=${limit}`);
+  if (!ok) throw new Error("account not found");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonOfferRecord[] } })?._embedded?.records ?? [];
+
+  const offers: OfferItem[] = records.map((r) => {
+    const parseAsset = (assetObj: HorizonOfferAsset): string => {
+      if (assetObj.asset_type === "native") return "XLM";
+      return `${assetObj.asset_code}:${assetObj.asset_issuer}`;
+    };
+
+    return {
+      id: r.id,
+      selling: parseAsset(r.selling),
+      buying: parseAsset(r.buying),
+      amount: r.amount,
+      price: r.price,
+    };
+  });
+
+  return {
+    account,
+    offers,
+  };
+}
+
 export interface EffectItem {
   id: string;
   type: string;
