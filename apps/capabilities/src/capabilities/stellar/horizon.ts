@@ -643,3 +643,133 @@ export async function getOffers(account: string, limit: number): Promise<Account
     offers,
   };
 }
+
+export interface EffectItem {
+  id: string;
+  type: string;
+  asset: string | null;
+  amount: string | null;
+  createdAt: string;
+}
+
+export interface AccountEffectsResult {
+  account: string;
+  effects: EffectItem[];
+}
+
+interface HorizonEffectRecord {
+  id: string;
+  type: string;
+  created_at: string;
+  account: string;
+  amount?: string;
+  asset_type?: string;
+  asset_code?: string;
+  asset_issuer?: string;
+  asset?: string;
+}
+
+/** Recent effects (what changed) for an account. */
+export async function getEffects(account: string, limit: number): Promise<AccountEffectsResult> {
+  const { ok, data } = await horizon(`/accounts/${account}/effects?order=desc&limit=${limit}`);
+  if (!ok) throw new Error("account not found");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonEffectRecord[] } })?._embedded?.records ?? [];
+
+  const effects: EffectItem[] = records.map((r) => {
+    let asset: string | null = null;
+    if (r.asset) {
+      asset = r.asset === "native" ? "XLM" : r.asset;
+    } else if (r.asset_type === "native") {
+      asset = "XLM";
+    } else if (r.asset_code && r.asset_issuer) {
+      asset = `${r.asset_code}:${r.asset_issuer}`;
+    }
+
+    return {
+      id: r.id,
+      type: r.type,
+      asset,
+      amount: r.amount ?? null,
+      createdAt: r.created_at,
+    };
+  });
+
+  return {
+    account,
+    effects,
+  };
+}
+
+export interface ClaimableBalanceItem {
+  id: string;
+  asset: string;
+  amount: string;
+}
+
+export interface ClaimableBalancesResult {
+  claimant: string;
+  balances: ClaimableBalanceItem[];
+}
+
+interface HorizonClaimableBalance {
+  id: string;
+  asset: string;
+  amount: string;
+}
+
+/** Claimable balances a claimant is eligible to claim. */
+export async function getClaimableBalances(
+  claimant: string,
+  limit: number,
+): Promise<ClaimableBalancesResult> {
+  const { ok, data } = await horizon(`/claimable_balances?claimant=${claimant}&limit=${limit}`);
+  if (!ok) throw new Error("horizon unavailable");
+
+  const records =
+    (data as { _embedded?: { records?: HorizonClaimableBalance[] } })?._embedded?.records ?? [];
+
+  const balances: ClaimableBalanceItem[] = records.map((r) => ({
+    id: r.id,
+    asset: r.asset === "native" ? "XLM" : r.asset,
+    amount: r.amount,
+  }));
+
+  return {
+    claimant,
+    balances,
+  };
+}
+
+export interface FeeStats {
+  lastLedgerBaseFee: string;
+  min: string;
+  mode: string;
+  p50: string;
+  p90: string;
+}
+
+interface HorizonFeeStats {
+  last_ledger_base_fee: string;
+  fee_charged: {
+    min: string;
+    mode: string;
+    p50: string;
+    p90: string;
+  };
+}
+
+/** Recommended base fee stats for the next ledger. */
+export async function getFeeStats(): Promise<FeeStats> {
+  const { ok, data } = await horizon("/fee_stats");
+  if (!ok) throw new Error("horizon unavailable");
+  const stats = data as HorizonFeeStats;
+  return {
+    lastLedgerBaseFee: stats.last_ledger_base_fee,
+    min: stats.fee_charged.min,
+    mode: stats.fee_charged.mode,
+    p50: stats.fee_charged.p50,
+    p90: stats.fee_charged.p90,
+  };
+}
