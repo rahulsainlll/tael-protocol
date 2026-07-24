@@ -96,7 +96,7 @@ const jsonLd = {
       description: DESCRIPTION,
       sameAs: [
         "https://x.com/taelprotocol",
-        "https://github.com/rahulsainlll/tael-protocol",
+        "https://github.com/tael-protocol/tael",
         "https://discord.gg/tcb6b7ZYha",
       ],
     },

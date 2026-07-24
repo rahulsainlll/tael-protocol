@@ -15,7 +15,7 @@
   "homepage": "https://taelprotocol.xyz",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rahulsainlll/tael-protocol.git",
+    "url": "git+https://github.com/tael-protocol/tael.git",
     "directory": "packages/sdk"
   },
   "exports": {
